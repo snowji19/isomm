@@ -523,6 +523,13 @@ For each wine return these exact fields:
 - pairings (array of 2-3 short food pairing strings)
 - type (one of: Red, White, Rose, Sparkling, Dessert)
 
+CRITICAL JSON RULES:
+- Use only straight double quotes " for JSON strings, never curly/smart quotes
+- Use only straight apostrophes ' inside string values, never curly apostrophes
+- No special characters, accented letters, or unicode in string values
+- Escape any double quotes inside string values with backslash \"
+- The output must be parseable by JSON.parse() without any modifications
+
 Respond ONLY with a valid JSON array starting with [ and ending with ]. No markdown, no preamble.`;
 
 async function fetchVivinoRating(wine) {
@@ -568,7 +575,12 @@ async function analyze() {
     }
 
     const raw   = await callClaude(messages, PARSE_PROMPT, false);
-    const clean = raw.replace(/```json|```/g, "").trim();
+    const clean = raw
+      .replace(/```json|```/g, "")
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2013\u2014]/g, "-")
+      .trim();
     wines = JSON.parse(clean);
 
     setProgress(15, "Rendering initial results...", "List poured — fetching live ratings...");
