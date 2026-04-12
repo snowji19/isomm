@@ -569,6 +569,39 @@ Return ONLY this JSON object:
   } catch { return null; }
 }
 
+function safeParseWines(raw) {
+  // Step 1: normalize unicode punctuation
+  let s = raw
+    .replace(/```json|```/g, "")
+    .replace(/[\u2018\u2019\u02BC]/g, "'")
+    .replace(/[\u201C\u201D\u00AB\u00BB]/g, '"')
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[\u2026]/g, "...")
+    .trim();
+
+  // Step 2: extract the JSON array
+  const start = s.indexOf("[");
+  const end   = s.lastIndexOf("]");
+  if (start === -1 || end === -1) return null;
+  s = s.slice(start, end + 1);
+
+  // Step 3: try parsing as-is
+  try { return JSON.parse(s); } catch (_) {}
+
+  // Step 4: scrub control characters and unescaped newlines inside strings
+  s = s
+    .replace(/[\u0000-\u001F\u007F]/g, " ")  // strip control chars
+    .replace(/([^\\])\\([^"\\/bfnrtu])/g, "$1$2"); // remove bad escapes
+
+  try { return JSON.parse(s); } catch (_) {}
+
+  // Step 5: last resort — ask the browser to eval it as a JS literal
+  try {
+    const result = Function('"use strict"; return (' + s + ')')();
+    return Array.isArray(result) ? result : null;
+  } catch (_) { return null; }
+}
+
 async function analyze() {
   document.getElementById("error-box").style.display   = "none";
   document.getElementById("results-box").style.display = "none";
@@ -597,14 +630,9 @@ async function analyze() {
       messages = [{ role: "user", content: `Analyze this restaurant wine list and return the JSON array. ${prefStr}\n\n${txt}` }];
     }
 
-    const raw   = await callClaude(messages, PARSE_PROMPT, false);
-    const clean = raw
-      .replace(/```json|```/g, "")
-      .replace(/[\u2018\u2019]/g, "'")
-      .replace(/[\u201C\u201D]/g, '"')
-      .replace(/[\u2013\u2014]/g, "-")
-      .trim();
-    wines = JSON.parse(clean);
+    const raw = await callClaude(messages, PARSE_PROMPT, false);
+    wines = safeParseWines(raw);
+    if (!wines) throw new Error("Could not parse the wine list response. Please try again.");
 
     setProgress(15, "Rendering initial results...", "List poured — fetching live ratings...");
     renderCards(wines);
