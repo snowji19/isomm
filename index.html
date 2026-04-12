@@ -263,7 +263,63 @@
     border-radius: 50px; padding: 3px 10px; letter-spacing: 0.05em;
   }
 
-  #results-box { display: none; }
+  /* ── Upload preview state ── */
+  .upload-browse-btn {
+    margin-top: 14px; padding: 9px 22px; background: var(--grape);
+    border: none; border-radius: 8px; color: #FAF6F0;
+    font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500;
+    cursor: pointer; letter-spacing: 0.05em;
+  }
+  .upload-browse-btn:hover { background: var(--grape-dark); }
+  .drop-zone.has-file { background: rgba(74,155,111,0.06); border-color: var(--good); border-style: solid; cursor: default; }
+  .upload-preview-icon { font-size: 36px; margin-bottom: 10px; }
+  .upload-preview-name {
+    font-family: 'Playfair Display', serif; font-size: 16px;
+    color: var(--ink); margin-bottom: 4px; word-break: break-all;
+  }
+  .upload-preview-size { font-size: 11px; color: var(--stone); margin-bottom: 14px; }
+  .upload-change-btn {
+    padding: 6px 16px; background: transparent; border: 1px solid var(--dust);
+    border-radius: 6px; color: var(--stone); font-family: 'DM Sans', sans-serif;
+    font-size: 11px; cursor: pointer;
+  }
+  .upload-change-btn:hover { border-color: var(--stone); color: var(--ink); }
+
+  /* ── Filter bar ── */
+  .filter-bar {
+    background: #fff; border: 1px solid var(--dust); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(107,45,94,0.04);
+  }
+  .filter-row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-row:last-of-type { margin-bottom: 8px; }
+  .filter-group { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 160px; }
+  .filter-label { font-size: 9px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--stone); }
+  .filter-type-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+  .type-pill {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 4px 12px; border-radius: 50px; border: 1px solid var(--dust);
+    color: var(--stone); cursor: pointer; background: transparent;
+  }
+  .type-pill.active { background: var(--grape); color: #FAF6F0; border-color: var(--grape); }
+  input[type="range"] { width: 100%; accent-color: var(--grape); cursor: pointer; }
+  select {
+    background: #fff; border: 1px solid var(--dust); border-radius: 8px;
+    padding: 8px 12px; color: var(--ink); font-family: 'DM Sans', sans-serif;
+    font-size: 12px; outline: none; cursor: pointer; width: 100%;
+  }
+  select:focus { border-color: var(--grape); }
+  .filter-reset-btn {
+    padding: 8px 16px; background: transparent; border: 1px solid var(--dust);
+    border-radius: 8px; color: var(--stone); font-family: 'DM Sans', sans-serif;
+    font-size: 11px; cursor: pointer; white-space: nowrap;
+  }
+  .filter-reset-btn:hover { border-color: var(--stone); color: var(--ink); }
+  .filter-count { font-size: 10px; color: var(--stone); letter-spacing: 0.05em; }
+  .no-results-msg {
+    font-family: 'Playfair Display', serif; font-style: italic;
+    font-size: 16px; color: var(--stone); text-align: center; padding: 40px 0;
+  }
 </style>
 </head>
 <body>
@@ -303,16 +359,25 @@
   <!-- PDF panel -->
   <div id="panel-pdf">
     <div class="drop-zone" id="drop-zone"
-      onclick="document.getElementById('file-input').click()"
       ondragover="event.preventDefault();this.classList.add('over')"
       ondragleave="this.classList.remove('over')"
       ondrop="handleDrop(event)">
-      <div class="drop-icon">📄</div>
-      <div class="drop-title">Drop in a wine list and we'll find your best bottle.</div>
-      <div class="drop-sub">or click to browse · PDF or photo</div>
-      <div class="file-name" id="file-name"></div>
+      <!-- Empty state -->
+      <div id="upload-empty">
+        <div class="drop-icon">📄</div>
+        <div class="drop-title">Drop in a wine list and we'll find your best bottle.</div>
+        <div class="drop-sub">PDF or photo · tap to browse</div>
+        <button class="upload-browse-btn" onclick="document.getElementById('file-input').click()">Choose File</button>
+      </div>
+      <!-- Uploaded state -->
+      <div id="upload-preview" style="display:none">
+        <div class="upload-preview-icon" id="upload-preview-icon">📄</div>
+        <div class="upload-preview-name" id="upload-preview-name"></div>
+        <div class="upload-preview-size" id="upload-preview-size"></div>
+        <button class="upload-change-btn" onclick="document.getElementById('file-input').click()">Change file</button>
+      </div>
     </div>
-    <input type="file" id="file-input" accept="application/pdf,image/*" capture="environment" style="display:none" onchange="handleFileInput(event)">
+    <input type="file" id="file-input" accept="application/pdf,image/*" style="display:none" onchange="handleFileInput(event)">
   </div>
 
   <!-- Text panel -->
@@ -338,6 +403,47 @@
 
   <!-- Results -->
   <div id="results-box">
+    <div class="filter-bar">
+      <div class="filter-row">
+        <div class="filter-group">
+          <div class="filter-label">Wine type</div>
+          <div class="filter-type-pills" id="filter-type-pills">
+            <button class="type-pill active" data-type="All" onclick="setTypeFilter(this)">All</button>
+            <button class="type-pill" data-type="Red" onclick="setTypeFilter(this)">Red</button>
+            <button class="type-pill" data-type="White" onclick="setTypeFilter(this)">White</button>
+            <button class="type-pill" data-type="Rose" onclick="setTypeFilter(this)">Rosé</button>
+            <button class="type-pill" data-type="Sparkling" onclick="setTypeFilter(this)">Sparkling</button>
+            <button class="type-pill" data-type="Dessert" onclick="setTypeFilter(this)">Dessert</button>
+          </div>
+        </div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-group">
+          <div class="filter-label">Max bottle price: <span id="price-val">Any</span></div>
+          <input type="range" id="filter-price" min="0" max="1000" step="25" value="1000" oninput="updateFilters()">
+        </div>
+        <div class="filter-group">
+          <div class="filter-label">Min Vivino rating: <span id="vivino-val">Any</span></div>
+          <input type="range" id="filter-vivino" min="0" max="5" step="0.1" value="0" oninput="updateFilters()">
+        </div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-group">
+          <div class="filter-label">Sort by</div>
+          <select id="filter-sort" onchange="updateFilters()">
+            <option value="score">Value score</option>
+            <option value="vivino">Vivino rating</option>
+            <option value="price-asc">Price: low to high</option>
+            <option value="price-desc">Price: high to low</option>
+          </select>
+        </div>
+        <div class="filter-group" style="align-self:flex-end">
+          <button class="filter-reset-btn" onclick="resetFilters()">Reset filters</button>
+        </div>
+      </div>
+      <div class="filter-count" id="filter-count"></div>
+    </div>
+
     <div class="legend">
       <div class="legend-item"><div class="legend-dot" style="background:#4A9B6F"></div>Excellent (90+)</div>
       <div class="legend-item"><div class="legend-dot" style="background:#7aba9a"></div>Good (80–89)</div>
@@ -348,6 +454,9 @@
       </div>
     </div>
     <div id="cards"></div>
+    <div id="no-results" style="display:none">
+      <div class="no-results-msg">Nothing matched — try loosening the filters.</div>
+    </div>
   </div>
 
 </div>
@@ -437,19 +546,28 @@ function switchTab(t) {
   checkReady();
 }
 
+function setUploadPreview(file) {
+  const isImage = file.type.startsWith("image/");
+  const sizeMB  = (file.size / 1024 / 1024).toFixed(1);
+  document.getElementById("upload-empty").style.display   = "none";
+  document.getElementById("upload-preview").style.display = "block";
+  document.getElementById("upload-preview-icon").textContent = isImage ? "🖼️" : "📄";
+  document.getElementById("upload-preview-name").textContent = file.name;
+  document.getElementById("upload-preview-size").textContent = sizeMB + " MB · " + (isImage ? "Image" : "PDF");
+  document.getElementById("drop-zone").classList.add("has-file");
+}
+
 function handleDrop(e) {
   e.preventDefault();
   document.getElementById("drop-zone").classList.remove("over");
   const f = e.dataTransfer.files[0];
   if (!f) return;
   if (f.type === "application/pdf") {
-    uploadedFile = f; uploadedFileType = "pdf";
-    document.getElementById("file-name").textContent = f.name;
+    uploadedFile = f; uploadedFileType = "pdf"; setUploadPreview(f);
   } else if (f.type.startsWith("image/")) {
-    uploadedFile = f; uploadedFileType = "image";
-    document.getElementById("file-name").textContent = f.name;
+    uploadedFile = f; uploadedFileType = "image"; setUploadPreview(f);
   } else {
-    showError("Please upload a PDF or image file.");
+    showError("Something went sideways — please upload a PDF or image file.");
   }
   checkReady();
 }
@@ -458,15 +576,100 @@ function handleFileInput(e) {
   const f = e.target.files[0];
   if (!f) return;
   if (f.type === "application/pdf") {
-    uploadedFile = f; uploadedFileType = "pdf";
+    uploadedFile = f; uploadedFileType = "pdf"; setUploadPreview(f);
   } else if (f.type.startsWith("image/")) {
-    uploadedFile = f; uploadedFileType = "image";
+    uploadedFile = f; uploadedFileType = "image"; setUploadPreview(f);
   } else {
-    showError("Please upload a PDF or image file.");
+    showError("Something went sideways — please upload a PDF or image file.");
     return;
   }
-  document.getElementById("file-name").textContent = f.name;
   checkReady();
+}
+
+// ── Filter state ───────────────────────────────────────────────────────────
+let allWines     = [];
+let activeType   = "All";
+let maxPrice     = 1000;
+let minVivino    = 0;
+let sortBy       = "score";
+
+function setTypeFilter(btn) {
+  document.querySelectorAll(".type-pill").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  activeType = btn.dataset.type;
+  updateFilters();
+}
+
+function updateFilters() {
+  maxPrice  = parseInt(document.getElementById("filter-price").value);
+  minVivino = parseFloat(document.getElementById("filter-vivino").value);
+  sortBy    = document.getElementById("filter-sort").value;
+
+  const priceLabel  = maxPrice >= 1000 ? "Any" : "$" + maxPrice;
+  const vivinoLabel = minVivino <= 0   ? "Any" : minVivino.toFixed(1) + "+";
+  document.getElementById("price-val").textContent  = priceLabel;
+  document.getElementById("vivino-val").textContent = vivinoLabel;
+
+  applyFilters();
+}
+
+function applyFilters() {
+  let filtered = allWines.filter(w => {
+    if (activeType !== "All") {
+      const t = (w.type || "").toLowerCase();
+      const a = activeType.toLowerCase();
+      if (a === "rose" && t !== "rose" && t !== "rosé") return false;
+      if (a !== "rose" && t !== a) return false;
+    }
+    if (maxPrice < 1000 && w.menu_price != null && w.menu_price > maxPrice) return false;
+    if (minVivino > 0 && (w.vivino_rating || 0) < minVivino) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    if (sortBy === "score")      return (b.value_score || 0) - (a.value_score || 0);
+    if (sortBy === "vivino")     return (b.vivino_rating || 0) - (a.vivino_rating || 0);
+    if (sortBy === "price-asc")  return (a.menu_price || 9999) - (b.menu_price || 9999);
+    if (sortBy === "price-desc") return (b.menu_price || 0) - (a.menu_price || 0);
+    return 0;
+  });
+
+  const container = document.getElementById("cards");
+  const noResults = document.getElementById("no-results");
+  const hasPrefs  = selectedPrefs.length > 0;
+  document.getElementById("legend-match").style.display = hasPrefs ? "flex" : "none";
+
+  if (filtered.length === 0) {
+    container.innerHTML = "";
+    noResults.style.display = "block";
+    document.getElementById("filter-count").textContent = "No wines match these filters.";
+  } else {
+    noResults.style.display = "none";
+    document.getElementById("filter-count").textContent =
+      filtered.length + " of " + allWines.length + " wines shown";
+    container.innerHTML = "";
+    filtered.forEach((wine) => {
+      const origIdx = allWines.indexOf(wine);
+      const matched = getMatchedPrefs(wine);
+      const card = document.createElement("div");
+      card.className = "wine-card" + (matched.length ? " matched" : "") + (wine.enriching ? " enriching" : "");
+      card.id = "card-" + origIdx;
+      card.innerHTML = buildCardHTML(wine, wine.rating_live || false, origIdx);
+      container.appendChild(card);
+    });
+  }
+}
+
+function resetFilters() {
+  activeType = "All";
+  document.querySelectorAll(".type-pill").forEach(b => b.classList.toggle("active", b.dataset.type === "All"));
+  document.getElementById("filter-price").value  = 1000;
+  document.getElementById("filter-vivino").value = 0;
+  document.getElementById("filter-sort").value   = "score";
+  maxPrice = 1000; minVivino = 0; sortBy = "score";
+  document.getElementById("price-val").textContent  = "Any";
+  document.getElementById("vivino-val").textContent = "Any";
+  applyFilters();
 }
 
 function checkReady() {
@@ -638,7 +841,6 @@ async function analyze() {
 
     setProgress(15, "Rendering initial results...", "List poured — fetching live ratings...");
     renderCards(wines);
-    document.getElementById("results-box").style.display = "block";
 
     const total = wines.length;
     let done = 0;
@@ -722,26 +924,26 @@ function buildCardHTML(wine, isLive, idx) {
 }
 
 function renderCards(wines) {
-  const container = document.getElementById("cards");
-  container.innerHTML = "";
-  const hasPrefs = selectedPrefs.length > 0;
-  document.getElementById("legend-match").style.display = hasPrefs ? "flex" : "none";
-  wines.forEach((wine, idx) => {
-    const matched = getMatchedPrefs(wine);
-    const card = document.createElement("div");
-    card.className = "wine-card enriching" + (matched.length ? " matched" : "");
-    card.id = "card-" + idx;
-    card.innerHTML = buildCardHTML(wine, false, idx);
-    container.appendChild(card);
-  });
+  allWines = wines.map(w => ({ ...w, enriching: true }));
+  document.getElementById("results-box").style.display = "block";
+  applyFilters();
 }
 
 function updateCard(idx, wine) {
+  allWines[idx] = { ...wine, enriching: false };
+  // Update in DOM if currently visible
   const card = document.getElementById("card-" + idx);
-  if (!card) return;
-  const matched = getMatchedPrefs(wine);
-  card.className = "wine-card" + (matched.length ? " matched" : "");
-  card.innerHTML = buildCardHTML(wine, wine.rating_live || false, idx);
+  if (card) {
+    const matched = getMatchedPrefs(wine);
+    card.className = "wine-card" + (matched.length ? " matched" : "");
+    card.innerHTML = buildCardHTML(wine, wine.rating_live || false, idx);
+  }
+  // Update filter count
+  const shown = document.getElementById("cards").children.length;
+  if (shown > 0) {
+    document.getElementById("filter-count").textContent =
+      shown + " of " + allWines.length + " wines shown";
+  }
 }
 
 buildPrefs();
