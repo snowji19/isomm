@@ -309,10 +309,10 @@
       ondrop="handleDrop(event)">
       <div class="drop-icon">📄</div>
       <div class="drop-title">Drop in a wine list and we'll find your best bottle.</div>
-      <div class="drop-sub">or click to browse · PDF only</div>
+      <div class="drop-sub">or click to browse · PDF or photo</div>
       <div class="file-name" id="file-name"></div>
     </div>
-    <input type="file" id="file-input" accept="application/pdf" style="display:none" onchange="handleFileInput(event)">
+    <input type="file" id="file-input" accept="application/pdf,image/*" capture="environment" style="display:none" onchange="handleFileInput(event)">
   </div>
 
   <!-- Text panel -->
@@ -390,7 +390,8 @@ function markupClass(pct) {
 }
 
 let selectedPrefs = [];
-let pdfFile = null;
+let uploadedFile = null;
+let uploadedFileType = null; // 'pdf' or 'image'
 let activeTab = "pdf";
 let apiKey = localStorage.getItem("isomm_key") || "";
 
@@ -440,20 +441,37 @@ function handleDrop(e) {
   e.preventDefault();
   document.getElementById("drop-zone").classList.remove("over");
   const f = e.dataTransfer.files[0];
-  if (f?.type === "application/pdf") { pdfFile = f; document.getElementById("file-name").textContent = f.name; }
-  else showError("Something went sideways — please upload a PDF file.");
+  if (!f) return;
+  if (f.type === "application/pdf") {
+    uploadedFile = f; uploadedFileType = "pdf";
+    document.getElementById("file-name").textContent = f.name;
+  } else if (f.type.startsWith("image/")) {
+    uploadedFile = f; uploadedFileType = "image";
+    document.getElementById("file-name").textContent = f.name;
+  } else {
+    showError("Please upload a PDF or image file.");
+  }
   checkReady();
 }
 
 function handleFileInput(e) {
   const f = e.target.files[0];
-  if (f) { pdfFile = f; document.getElementById("file-name").textContent = f.name; }
+  if (!f) return;
+  if (f.type === "application/pdf") {
+    uploadedFile = f; uploadedFileType = "pdf";
+  } else if (f.type.startsWith("image/")) {
+    uploadedFile = f; uploadedFileType = "image";
+  } else {
+    showError("Please upload a PDF or image file.");
+    return;
+  }
+  document.getElementById("file-name").textContent = f.name;
   checkReady();
 }
 
 function checkReady() {
   const hasKey   = !!apiKey;
-  const hasInput = activeTab === "pdf" ? !!pdfFile : document.getElementById("wine-text").value.trim().length > 0;
+  const hasInput = activeTab === "pdf" ? !!uploadedFile : document.getElementById("wine-text").value.trim().length > 0;
   document.getElementById("analyze-btn").disabled = !(hasKey && hasInput);
 }
 
@@ -564,10 +582,15 @@ async function analyze() {
     setProgress(5, "", "Tasting the list...");
     let messages;
     if (activeTab === "pdf") {
-      const b64 = await toBase64(pdfFile);
+      const b64 = await toBase64(uploadedFile);
+      const isImage = uploadedFileType === "image";
+      const mediaType = isImage ? uploadedFile.type : "application/pdf";
+      const contentBlock = isImage
+        ? { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } }
+        : { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } };
       messages = [{ role: "user", content: [
-        { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } },
-        { type: "text", text: `Analyze this restaurant wine list and return the JSON array. ${prefStr}` }
+        contentBlock,
+        { type: "text", text: `This is a photo or scan of a restaurant wine list. Analyze it and return the JSON array. ${prefStr}` }
       ]}];
     } else {
       const txt = document.getElementById("wine-text").value.trim();
