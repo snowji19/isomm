@@ -499,7 +499,8 @@ function toBase64(file) {
 }
 
 async function callClaude(messages, system, useSearch) {
-  const body = { model: "claude-sonnet-4-20250514", max_tokens: 1000, messages };
+  const maxTok = useSearch ? 1000 : 8000;
+  const body = { model: "claude-sonnet-4-20250514", max_tokens: maxTok, messages };
   if (system)    body.system = system;
   if (useSearch) body.tools  = [{ type: "web_search_20250305", name: "web_search" }];
 
@@ -515,6 +516,7 @@ async function callClaude(messages, system, useSearch) {
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+  if (data.stop_reason === "max_tokens") throw new Error("Wine list is too large — try uploading a smaller section of the menu.");
   return data.content.map(b => b.text || "").filter(Boolean).join("");
 }
 
