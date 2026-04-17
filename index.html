@@ -988,7 +988,7 @@ function buildCardHTML(wine, isLive, idx) {
   const badges    = matched.map(p => `<span class="match-badge">${p}</span>`).join("");
   const ratingBadge = isLive
     ? `<span class="live-badge">live rating</span>`
-    : `<span class="est-badge">estimated</span>`;
+    : `<span class="est-badge">rating estimated</span>`;
   const isBest = score >= 90;
 
   return `
@@ -1024,19 +1024,29 @@ function buildCardHTML(wine, isLive, idx) {
 }
 
 function updateCountBanner(shown, total, enriched) {
-  const banner = document.getElementById("wine-count-banner");
+  const banner  = document.getElementById("wine-count-banner");
   const totalEl = document.getElementById("wine-count-total");
   const subEl   = document.getElementById("wine-count-sub");
   banner.classList.add("visible");
+
   if (shown === total) {
     totalEl.textContent = total + " wines analyzed";
   } else {
     totalEl.textContent = shown + " of " + total + " wines shown";
   }
+
   if (enriched < total) {
     subEl.textContent = "Fetching live ratings — " + enriched + " of " + total + " complete";
   } else {
-    subEl.textContent = "Live Vivino ratings · sorted by value score";
+    const liveCount = allWines.filter(w => w.rating_live).length;
+    const estCount  = total - liveCount;
+    if (estCount === 0) {
+      subEl.textContent = "All ratings confirmed live from Vivino";
+    } else if (liveCount === 0) {
+      subEl.textContent = "Ratings estimated — Vivino lookup unavailable";
+    } else {
+      subEl.textContent = liveCount + " live from Vivino · " + estCount + " estimated";
+    }
   }
 }
 
