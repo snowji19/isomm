@@ -851,7 +851,7 @@ CRITICAL JSON RULES:
 
 Respond ONLY with a valid JSON array starting with [ and ending with ]. No markdown, no preamble.`;
 
-async function fetchVivinoRating(wine) {
+async function fetchVivinoRating(wine, attempt = 1) {
   const prompt = `Search Vivino for the community rating of: "${wine.name}${wine.vintage ? " " + wine.vintage : ""}".
 
 Return ONLY this JSON object:
@@ -865,9 +865,17 @@ Return ONLY this JSON object:
   try {
     const raw   = await callClaude([{ role: "user", content: prompt }], null, true);
     const match = raw.replace(/```json|```/g, "").trim().match(/\{[\s\S]*?\}/);
-    if (!match) return null;
-    return JSON.parse(match[0]);
-  } catch { return null; }
+    if (!match) throw new Error("no match");
+    const result = JSON.parse(match[0]);
+    if (!result.vivino_rating) throw new Error("no rating");
+    return result;
+  } catch {
+    if (attempt < 2) {
+      await new Promise(r => setTimeout(r, 1500));
+      return fetchVivinoRating(wine, attempt + 1);
+    }
+    return null;
+  }
 }
 
 function safeParseWines(raw) {
@@ -946,22 +954,20 @@ async function analyze() {
     let done = 0;
     setProgress(15, `Looking up live Vivino ratings (0 of ${total})...`);
 
-    const BATCH = 3;
-    for (let i = 0; i < total; i += BATCH) {
-      const batch = wines.slice(i, i + BATCH);
-      await Promise.all(batch.map(async (wine, bi) => {
-        const idx    = i + bi;
-        const result = await fetchVivinoRating(wine);
-        if (result && result.vivino_rating) {
-          wine.vivino_rating = parseFloat(parseFloat(result.vivino_rating).toFixed(1));
-          wine.review_count  = result.review_count || null;
-          wine.rating_live   = true;
-          wine.value_score   = calcScore(wine.vivino_rating, wine.markup_pct ?? 200);
-        }
-        done++;
-        setProgress(15 + Math.round((done / total) * 82), `Live ratings: ${done} of ${total} wines`);
-        updateCard(idx, wine);
-      }));
+    for (let i = 0; i < total; i++) {
+      const wine   = wines[i];
+      const result = await fetchVivinoRating(wine);
+      if (result && result.vivino_rating) {
+        wine.vivino_rating = parseFloat(parseFloat(result.vivino_rating).toFixed(1));
+        wine.review_count  = result.review_count || null;
+        wine.rating_live   = true;
+        wine.value_score   = calcScore(wine.vivino_rating, wine.markup_pct ?? 200);
+      }
+      done++;
+      setProgress(15 + Math.round((done / total) * 82), `Live ratings: ${done} of ${total} wines`);
+      updateCard(i, wine);
+      // Small delay between calls to avoid rate limiting
+      if (i < total - 1) await new Promise(r => setTimeout(r, 300));
     }
 
     setProgress(100, `All ${total} wines ready`, "Your best pours are ready.");
