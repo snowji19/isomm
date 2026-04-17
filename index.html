@@ -285,6 +285,32 @@
   }
   .upload-change-btn:hover { border-color: var(--stone); color: var(--ink); }
 
+  .wine-count-banner {
+    background: var(--grape);
+    border-radius: 12px;
+    padding: 16px 22px;
+    margin-bottom: 16px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .wine-count-banner.visible { display: flex; }
+  .wine-count-total {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    color: #FAF6F0;
+    font-weight: 400;
+  }
+  .wine-count-sub {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    color: rgba(232,165,152,0.8);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   /* ── Filter bar ── */
   .filter-bar {
     background: #fff; border: 1px solid var(--dust); border-radius: 12px;
@@ -442,6 +468,11 @@
         </div>
       </div>
       <div class="filter-count" id="filter-count"></div>
+    </div>
+
+    <div class="wine-count-banner" id="wine-count-banner">
+      <div class="wine-count-total" id="wine-count-total"></div>
+      <div class="wine-count-sub" id="wine-count-sub"></div>
     </div>
 
     <div class="legend">
@@ -654,10 +685,12 @@ function applyFilters() {
     container.innerHTML = "";
     noResults.style.display = "block";
     document.getElementById("filter-count").textContent = "No wines match these filters.";
+    updateCountBanner(0, allWines.length, allWines.filter(w => !w.enriching).length);
   } else {
     noResults.style.display = "none";
     document.getElementById("filter-count").textContent =
       filtered.length + " of " + allWines.length + " wines shown";
+    updateCountBanner(filtered.length, allWines.length, allWines.filter(w => !w.enriching).length);
     container.innerHTML = "";
     filtered.forEach((wine) => {
       const origIdx = allWines.indexOf(wine);
@@ -990,27 +1023,41 @@ function buildCardHTML(wine, isLive, idx) {
     </div>`;
 }
 
+function updateCountBanner(shown, total, enriched) {
+  const banner = document.getElementById("wine-count-banner");
+  const totalEl = document.getElementById("wine-count-total");
+  const subEl   = document.getElementById("wine-count-sub");
+  banner.classList.add("visible");
+  if (shown === total) {
+    totalEl.textContent = total + " wines analyzed";
+  } else {
+    totalEl.textContent = shown + " of " + total + " wines shown";
+  }
+  if (enriched < total) {
+    subEl.textContent = "Fetching live ratings — " + enriched + " of " + total + " complete";
+  } else {
+    subEl.textContent = "Live Vivino ratings · sorted by value score";
+  }
+}
+
 function renderCards(wines) {
   allWines = wines.map(w => ({ ...w, enriching: true }));
   document.getElementById("results-box").style.display = "block";
+  updateCountBanner(wines.length, wines.length, 0);
   applyFilters();
 }
 
 function updateCard(idx, wine) {
   allWines[idx] = { ...wine, enriching: false };
-  // Update in DOM if currently visible
   const card = document.getElementById("card-" + idx);
   if (card) {
     const matched = getMatchedPrefs(wine);
     card.className = "wine-card" + (matched.length ? " matched" : "");
     card.innerHTML = buildCardHTML(wine, wine.rating_live || false, idx);
   }
-  // Update filter count
-  const shown = document.getElementById("cards").children.length;
-  if (shown > 0) {
-    document.getElementById("filter-count").textContent =
-      shown + " of " + allWines.length + " wines shown";
-  }
+  const enriched = allWines.filter(w => !w.enriching).length;
+  const shown    = document.getElementById("cards").children.length;
+  updateCountBanner(shown, allWines.length, enriched);
 }
 
 buildPrefs();
