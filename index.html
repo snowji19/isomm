@@ -751,7 +751,7 @@ function compressImage(file, maxBytes = 4500000) {
 }
 
 async function callClaude(messages, system, useSearch) {
-  const maxTok = useSearch ? 1000 : 8000;
+  const maxTok = useSearch ? 1000 : 16000;
   const body = {
     model: "claude-sonnet-4-20250514",
     max_tokens: maxTok,
@@ -773,7 +773,7 @@ async function callClaude(messages, system, useSearch) {
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  if (data.stop_reason === "max_tokens") throw new Error("Wine list is too large — try uploading a smaller section of the menu.");
+  if (data.stop_reason === "max_tokens") throw new Error("Response was cut off — the wine list may be very long. Try uploading one section at a time.");
   return data.content.map(b => b.text || "").filter(Boolean).join("");
 }
 
