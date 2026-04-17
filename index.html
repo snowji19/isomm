@@ -784,7 +784,7 @@ function compressImage(file, maxBytes = 4500000) {
 }
 
 async function callClaude(messages, system, useSearch) {
-  const maxTok = useSearch ? 1000 : 16000;
+  const maxTok = useSearch ? 1000 : 32000;
   const body = {
     model: "claude-sonnet-4-20250514",
     max_tokens: maxTok,
@@ -810,15 +810,28 @@ async function callClaude(messages, system, useSearch) {
   return data.content.map(b => b.text || "").filter(Boolean).join("");
 }
 
-const PARSE_PROMPT = `You are a wine list data extractor. Your job is to extract every purchasable bottle of wine from the provided wine list and return them as a JSON array.
+const PARSE_PROMPT = `You are a wine list data extractor. Your job is to extract ONLY wines from the provided menu and return them as a JSON array.
 
-EXTRACTION RULES — follow exactly:
+WHAT TO INCLUDE — wines only:
+- Still wines (Red, White, Rose)
+- Sparkling wines and Champagne
+- Dessert wines and fortified wines (Port, Sherry, Ice Wine)
+
+WHAT TO EXCLUDE — do not include any of these:
+- Cocktails, signature drinks, or mixed drinks
+- Spirits: whiskey, bourbon, scotch, rye, tequila, mezcal, gin, vodka, rum, brandy, cognac, grappa
+- Beer and cider
+- Cordials, liqueurs, amari, aperitivos, vermouth
+- Non-alcoholic drinks, coffee, juice, soda
+- Food items
+- Section headers, descriptions, or marketing text
+- Wines by the glass that have NO bottle price listed
+
+WINE EXTRACTION RULES:
 - Include EVERY distinct wine entry that has a bottle price listed
-- Include wines sold by the glass (BTG) only if they also have a bottle price listed
-- Do NOT include section headers, descriptions, or text that is not a wine entry
+- Include wines sold by the glass ONLY if they also have a bottle price listed
 - Do NOT skip any wine — if a wine appears multiple times with different vintages, include each vintage as a separate entry
-- Do NOT include half bottles, magnums, or other formats as separate entries unless they are the only format listed
-- Do NOT include wines with no price listed
+- Do NOT include large format (magnums, jeroboams) as separate entries unless that is the only format listed
 - Be completely consistent — the same list should always produce the same number of entries
 
 SCORING FORMULA — apply exactly:
