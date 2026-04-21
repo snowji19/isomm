@@ -507,12 +507,17 @@ const PREF_RULES = {
 };
 
 // Scoring: 60% Vivino, 40% Markup
-// 100% markup (2x retail) = excellent = full 40pts
-// 300%+ markup = 0 markup pts
+// Markup tolerance scales with price — expensive bottles get more leeway
+// e.g. $50 bottle: good markup = 100-150%, $500 bottle: good markup = 150-200%
 // Tiers: 90+ excellent, 80-89 good, 70-79 fair, <70 poor
-function calcScore(vivino, markup) {
+function calcScore(vivino, markup, menuPrice) {
   const vivinoPoints = Math.min((vivino / 5) * 60, 60);
-  const markupPoints = Math.min(Math.max((300 - markup) / 200, 0), 1) * 40;
+  // Price-adjusted markup ceiling: base 250%, scales up for expensive bottles
+  // At $100 menu price: ceiling = 250%. At $500: ceiling = 300%. At $2000+: ceiling = 400%
+  const price = menuPrice || 100;
+  const markupCeiling = Math.min(250 + Math.log10(Math.max(price / 100, 1)) * 100, 450);
+  const markupFloor   = 80; // below this = excellent value regardless of price
+  const markupPoints  = Math.min(Math.max((markupCeiling - markup) / (markupCeiling - markupFloor), 0), 1) * 40;
   return Math.round(vivinoPoints + markupPoints);
 }
 
@@ -973,7 +978,7 @@ async function analyze() {
       retail_price:     w.retail_price || w.r || null,
       markup_pct:       w.markup_pct ?? w.m ?? 200,
       vivino_rating:    w.vivino_rating || w.vr || 3.8,
-      value_score:      w.value_score || w.s || 0,
+      value_score:      w.value_score || w.s || calcScore(w.vivino_rating || w.vr || 3.8, w.markup_pct || w.m || 200, w.menu_price || w.p || 100),
       type:             TYPE_MAP[w.type] || w.type || TYPE_MAP[w.t] || w.t || "Red",
       matched_attributes: w.matched_attributes || (w.a ? w.a.map(a => ({b:"bold",l:"light",d:"dry",sw:"sweet",t:"tannic",sm:"smooth",e:"earthy",f:"fruity"})[a] || a) : []),
       verdict:          w.verdict || "",
@@ -996,7 +1001,7 @@ async function analyze() {
         wine.vivino_rating = parseFloat(parseFloat(result.vivino_rating).toFixed(1));
         wine.review_count  = result.review_count || null;
         wine.rating_live   = true;
-        wine.value_score   = calcScore(wine.vivino_rating, wine.markup_pct ?? 200);
+        wine.value_score   = calcScore(wine.vivino_rating, wine.markup_pct ?? 200, wine.menu_price);
         if (result.verdict)  wine.verdict  = result.verdict;
         if (result.pairings) wine.pairings = result.pairings;
       }
@@ -1008,6 +1013,8 @@ async function analyze() {
     }
 
     setProgress(100, `All ${total} wines ready`, "Your best pours are ready.");
+    // Final re-sort now that all live scores are in
+    applyFilters();
     setTimeout(() => { document.getElementById("loading-box").style.display = "none"; }, 1400);
 
   } catch (err) {
@@ -1024,23 +1031,26 @@ function getMatchedPrefs(wine) {
 }
 
 function buildCardHTML(wine, isLive, idx) {
-  const score     = Math.round(wine.value_score ?? 0);
-  const col       = scoreColor(score);
-  const markupCls = markupClass(wine.markup_pct ?? 200);
-  const matched   = getMatchedPrefs(wine);
-  const badges    = matched.map(p => `<span class="match-badge">${p}</span>`).join("");
+  const score      = Math.round(wine.value_score ?? 0);
+  const isPending  = !isLive;
+  const col        = isPending
+    ? { border: "var(--dust)", color: "var(--stone)" }
+    : scoreColor(score);
+  const markupCls  = markupClass(wine.markup_pct ?? 200);
+  const matched    = getMatchedPrefs(wine);
+  const badges     = matched.map(p => `<span class="match-badge">${p}</span>`).join("");
   const ratingBadge = isLive
     ? `<span class="live-badge">live rating</span>`
     : `<span class="est-badge">rating estimated</span>`;
-  const isBest = score >= 90;
+  const isBest = isLive && score >= 90;
 
   return `
     <div class="card-header${isBest ? " best" : ""}">
       <div class="card-header-label">Best Pour</div>
     </div>
     <div class="card-body">
-      <div class="score-ring" style="border-color:${col.border};color:${col.color}">
-        <span class="score-num">${score}</span>
+      <div class="score-ring" style="border-color:${col.border};color:${col.color}${isPending ? ";opacity:0.45" : ""}">
+        <span class="score-num">${isPending ? "?" : score}</span>
         <span class="score-lbl">value</span>
       </div>
       <div class="wine-body">
@@ -1060,7 +1070,7 @@ function buildCardHTML(wine, isLive, idx) {
             <div class="meta-val">${wine.vivino_rating}${wine.review_count ? `<span class="review-count">(${wine.review_count.toLocaleString()})</span>` : ""}</div>
           </div>
         </div>
-        <div class="wine-verdict">"${wine.verdict || ""}"</div>
+        <div class="wine-verdict">${wine.verdict ? `"${wine.verdict}"` : ""}</div>
         ${wine.pairings?.length ? `<div class="pairings">${wine.pairings.map(p => `<span class="pairing">${p}</span>`).join("")}</div>` : ""}
       </div>
     </div>`;
