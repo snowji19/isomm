@@ -263,6 +263,21 @@
     border-radius: 50px; padding: 3px 10px; letter-spacing: 0.05em;
   }
 
+  /* ── Pre-filter bar ── */
+  .pre-filter-bar {
+    background: var(--cream);
+    border: 1px solid var(--dust);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+  }
+  .pre-filter-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .pre-filter-row .filter-group { flex: 1; min-width: 140px; }
+
   /* ── Upload preview state ── */
   .upload-browse-btn {
     margin-top: 14px; padding: 9px 22px; background: var(--grape);
@@ -415,6 +430,21 @@
   <div class="section-label" style="margin-top:4px">Your preferences — matched wines will be labeled</div>
   <div class="prefs" id="prefs"></div>
 
+  <!-- Pre-filters: set before analyzing to limit Vivino lookups -->
+  <div class="pre-filter-bar">
+    <div class="section-label" style="margin-bottom:12px">Narrow results before analyzing — only matching wines get live ratings</div>
+    <div class="pre-filter-row">
+      <div class="filter-group">
+        <div class="filter-label">Max bottle price: <span id="pre-price-val">Any</span></div>
+        <input type="range" id="pre-filter-price" min="0" max="1000" step="25" value="1000" oninput="updatePreFilters()">
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">Min Vivino est.: <span id="pre-vivino-val">Any</span></div>
+        <input type="range" id="pre-filter-vivino" min="0" max="5" step="0.1" value="0" oninput="updatePreFilters()">
+      </div>
+    </div>
+  </div>
+
   <button class="analyze-btn" id="analyze-btn" onclick="analyze()" disabled>Find My Best Bottle</button>
 
   <div class="error" id="error-box"></div>
@@ -536,9 +566,18 @@ function markupClass(pct) {
 
 let selectedPrefs = [];
 let uploadedFile = null;
-let uploadedFileType = null; // 'pdf' or 'image'
+let uploadedFileType = null;
 let activeTab = "pdf";
 let apiKey = localStorage.getItem("isomm_key") || "";
+let preMaxPrice  = 1000;
+let preMinVivino = 0;
+
+function updatePreFilters() {
+  preMaxPrice  = parseInt(document.getElementById("pre-filter-price").value);
+  preMinVivino = parseFloat(document.getElementById("pre-filter-vivino").value);
+  document.getElementById("pre-price-val").textContent  = preMaxPrice  >= 1000 ? "Any" : "$" + preMaxPrice;
+  document.getElementById("pre-vivino-val").textContent = preMinVivino <= 0    ? "Any" : preMinVivino.toFixed(1) + "+";
+}
 
 function saveKey() {
   const val = document.getElementById("api-key").value.trim();
@@ -987,35 +1026,49 @@ async function analyze() {
       rating_live:      false
     }));
 
-    setProgress(15, "Rendering initial results...", "List poured — fetching live ratings...");
+    setProgress(15, "Rendering initial results...", "List poured — applying filters...");
     renderCards(wines);
 
-    const total = wines.length;
+    // Only enrich wines that pass the pre-filters — skip the rest
+    const toEnrich = wines.filter(w => {
+      const priceOk  = preMaxPrice  >= 1000 || (w.menu_price != null && w.menu_price <= preMaxPrice);
+      const vivinoOk = preMinVivino <= 0    || (w.vivino_rating >= preMinVivino);
+      return priceOk && vivinoOk;
+    });
+
+    const enrichCount = toEnrich.length;
+    const totalCount  = wines.length;
     let done = 0;
-    setProgress(15, `Looking up live Vivino ratings (0 of ${total})...`);
 
-    for (let i = 0; i < total; i++) {
-      const wine   = wines[i];
-      const result = await fetchVivinoRating(wine);
-      if (result && result.vivino_rating) {
-        wine.vivino_rating = parseFloat(parseFloat(result.vivino_rating).toFixed(1));
-        wine.review_count  = result.review_count || null;
-        wine.rating_live   = true;
-        wine.value_score   = calcScore(wine.vivino_rating, wine.markup_pct ?? 200, wine.menu_price);
-        if (result.verdict)  wine.verdict  = result.verdict;
-        if (result.pairings) wine.pairings = result.pairings;
+    if (enrichCount === 0) {
+      setProgress(100, "No wines matched your filters — try widening them.", "Done");
+      applyFilters();
+      setTimeout(() => { document.getElementById("loading-box").style.display = "none"; }, 1200);
+    } else {
+      setProgress(15, `Fetching live ratings for ${enrichCount} wines (${totalCount - enrichCount} skipped by filters)...`);
+
+      for (let i = 0; i < enrichCount; i++) {
+        const wine   = toEnrich[i];
+        const origIdx = wines.indexOf(wine);
+        const result = await fetchVivinoRating(wine);
+        if (result && result.vivino_rating) {
+          wine.vivino_rating = parseFloat(parseFloat(result.vivino_rating).toFixed(1));
+          wine.review_count  = result.review_count || null;
+          wine.rating_live   = true;
+          wine.value_score   = calcScore(wine.vivino_rating, wine.markup_pct ?? 200, wine.menu_price);
+          if (result.verdict)  wine.verdict  = result.verdict;
+          if (result.pairings) wine.pairings = result.pairings;
+        }
+        done++;
+        setProgress(15 + Math.round((done / enrichCount) * 82), `Live ratings: ${done} of ${enrichCount}`);
+        updateCard(origIdx, wine);
+        if (i < enrichCount - 1) await new Promise(r => setTimeout(r, 300));
       }
-      done++;
-      setProgress(15 + Math.round((done / total) * 82), `Live ratings: ${done} of ${total} wines`);
-      updateCard(i, wine);
-      // Small delay between calls to avoid rate limiting
-      if (i < total - 1) await new Promise(r => setTimeout(r, 300));
-    }
 
-    setProgress(100, `All ${total} wines ready`, "Your best pours are ready.");
-    // Final re-sort now that all live scores are in
-    applyFilters();
-    setTimeout(() => { document.getElementById("loading-box").style.display = "none"; }, 1400);
+      setProgress(100, `${enrichCount} wines enriched · ${totalCount - enrichCount} used estimated scores`, "Your best pours are ready.");
+      applyFilters();
+      setTimeout(() => { document.getElementById("loading-box").style.display = "none"; }, 1400);
+    }
 
   } catch (err) {
     document.getElementById("loading-box").style.display = "none";
@@ -1105,6 +1158,17 @@ function updateCountBanner(shown, total, enriched) {
 
 function renderCards(wines) {
   allWines = wines.map(w => ({ ...w, enriching: true }));
+  // Sync post-results filter sliders to pre-filter values
+  if (preMaxPrice < 1000) {
+    document.getElementById("filter-price").value = preMaxPrice;
+    maxPrice = preMaxPrice;
+    document.getElementById("price-val").textContent = "$" + preMaxPrice;
+  }
+  if (preMinVivino > 0) {
+    document.getElementById("filter-vivino").value = preMinVivino;
+    minVivino = preMinVivino;
+    document.getElementById("vivino-val").textContent = preMinVivino.toFixed(1) + "+";
+  }
   document.getElementById("results-box").style.display = "block";
   updateCountBanner(wines.length, wines.length, 0);
   applyFilters();
