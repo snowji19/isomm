@@ -842,37 +842,41 @@ SCORING FORMULA — apply exactly:
 Markup guide: 100% markup (restaurant charges 2x retail) = excellent = 40/40 pts. 300%+ = 0 pts.
 Score tiers: 90+ excellent, 80-89 good, 70-79 fair, below 70 poor.
 
-For each wine return these exact fields:
-- name (string)
-- vintage (string or null)
-- menu_price (integer or null, no dollar sign)
-- retail_price (estimated integer USD)
-- markup_pct (integer — percentage ABOVE retail. 100% means 2x retail. Typical range 100-300%)
-- vivino_rating (estimated float to 1 decimal, e.g. 4.2)
-- value_score (integer, calculated using formula above)
-- matched_attributes (array from: ["bold","light","dry","sweet","tannic","smooth","earthy","fruity"])
-- verdict (string, max 20 words, no em dashes)
-- pairings (array of 2-3 short food pairing strings)
-- type (one of: Red, White, Rose, Sparkling, Dessert)
+For each wine return ONLY these compact fields — nothing else:
+- n: wine name (string, keep it short — producer and wine name only, no region/appellation)
+- v: vintage year (string or null)
+- p: menu price (integer, no dollar sign, null if not listed)
+- r: estimated retail price USD (integer)
+- m: markup percentage above retail (integer, 100 = 2x retail)
+- vr: estimated Vivino rating (float, 1 decimal)
+- s: value score (integer, use formula above)
+- t: type (one letter: R=Red W=White P=Rose S=Sparkling D=Dessert)
+- a: matched attributes (compact array, use first letter only: b=bold l=light d=dry sw=sweet t=tannic sm=smooth e=earthy f=fruity)
+
+CRITICAL — keep output minimal:
+- Use short field names as listed above
+- No verdict text, no pairings, no long strings
+- Name field: producer + wine name only, drop region/vintage/appellation from name
+- The entire response must be under 20000 tokens
 
 CRITICAL JSON RULES:
-- Use only straight double quotes " for JSON strings, never curly/smart quotes
-- Use only straight apostrophes ' inside string values, never curly apostrophes
-- No special characters, accented letters, or unicode in string values
-- Escape any double quotes inside string values with backslash \"
-- The output must be parseable by JSON.parse() without any modifications
+- Straight double quotes only, never curly/smart quotes
+- No special characters or unicode in string values
+- Output must be parseable by JSON.parse()
 
 Respond ONLY with a valid JSON array starting with [ and ending with ]. No markdown, no preamble.`;
 
 async function fetchVivinoRating(wine, attempt = 1) {
   const prompt = `Search Vivino for the community rating of: "${wine.name}${wine.vintage ? " " + wine.vintage : ""}".
 
-Return ONLY this JSON object:
-{"vivino_rating": 4.2, "review_count": 12500}
+Return ONLY this JSON object with no other text:
+{"vivino_rating": 4.2, "review_count": 12500, "verdict": "Silky tannins with dark fruit and excellent value", "pairings": ["grilled steak", "aged cheddar"]}
 
-- vivino_rating must be a float between 2.5 and 5.0, never null
-- review_count is an integer (omit if not found)
-- If exact wine not found on Vivino, estimate based on reputation
+Rules:
+- vivino_rating: actual Vivino community rating, float 2.5-5.0, never null
+- review_count: integer, omit if not found
+- verdict: one sommelier sentence max 12 words, no em dashes, plain ASCII only
+- pairings: array of 2-3 short food strings, plain ASCII only
 - Respond with ONLY the JSON object, nothing else`;
 
   try {
@@ -957,8 +961,26 @@ async function analyze() {
     }
 
     const raw = await callClaude(messages, PARSE_PROMPT, false);
-    wines = safeParseWines(raw);
-    if (!wines) throw new Error("Could not parse the wine list response. Please try again.");
+    const parsed = safeParseWines(raw);
+    if (!parsed) throw new Error("Could not parse the wine list response. Please try again.");
+
+    // Normalize compact field names to full names
+    const TYPE_MAP = { R:"Red", W:"White", P:"Rose", S:"Sparkling", D:"Dessert" };
+    wines = parsed.map(w => ({
+      name:             w.name || w.n || "",
+      vintage:          w.vintage || w.v || null,
+      menu_price:       w.menu_price ?? w.p ?? null,
+      retail_price:     w.retail_price || w.r || null,
+      markup_pct:       w.markup_pct ?? w.m ?? 200,
+      vivino_rating:    w.vivino_rating || w.vr || 3.8,
+      value_score:      w.value_score || w.s || 0,
+      type:             TYPE_MAP[w.type] || w.type || TYPE_MAP[w.t] || w.t || "Red",
+      matched_attributes: w.matched_attributes || (w.a ? w.a.map(a => ({b:"bold",l:"light",d:"dry",sw:"sweet",t:"tannic",sm:"smooth",e:"earthy",f:"fruity"})[a] || a) : []),
+      verdict:          w.verdict || "",
+      pairings:         w.pairings || [],
+      review_count:     null,
+      rating_live:      false
+    }));
 
     setProgress(15, "Rendering initial results...", "List poured — fetching live ratings...");
     renderCards(wines);
@@ -975,6 +997,8 @@ async function analyze() {
         wine.review_count  = result.review_count || null;
         wine.rating_live   = true;
         wine.value_score   = calcScore(wine.vivino_rating, wine.markup_pct ?? 200);
+        if (result.verdict)  wine.verdict  = result.verdict;
+        if (result.pairings) wine.pairings = result.pairings;
       }
       done++;
       setProgress(15 + Math.round((done / total) * 82), `Live ratings: ${done} of ${total} wines`);
