@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -7,365 +8,367 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500&display=swap');
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --grape:       #6B2D5E;
-    --grape-dark:  #4A1D40;
-    --rose:        #E8A598;
-    --cork:        #C4966A;
-    --linen:       #FAF6F0;
-    --cream:       #F2EBE0;
-    --dust:        #D9CFC4;
-    --stone:       #7A6E66;
-    --ink:         #2C2420;
-    --good:        #4A9B6F;
-    --fair:        #C4966A;
-    --skip:        #C4614A;
-    --good-bg:     rgba(74,155,111,0.1);
-    --skip-bg:     rgba(196,97,74,0.08);
-  }
+:root {
+–grape:       #6B2D5E;
+–grape-dark:  #4A1D40;
+–rose:        #E8A598;
+–cork:        #C4966A;
+–linen:       #FAF6F0;
+–cream:       #F2EBE0;
+–dust:        #D9CFC4;
+–stone:       #7A6E66;
+–ink:         #2C2420;
+–good:        #4A9B6F;
+–fair:        #C4966A;
+–skip:        #C4614A;
+–good-bg:     rgba(74,155,111,0.1);
+–skip-bg:     rgba(196,97,74,0.08);
+}
 
-  body {
-    background: var(--linen);
-    color: var(--ink);
-    font-family: 'DM Sans', sans-serif;
-    min-height: 100vh;
-  }
+body {
+background: var(–linen);
+color: var(–ink);
+font-family: ‘DM Sans’, sans-serif;
+min-height: 100vh;
+}
 
-  /* ── Header ── */
-  .hero {
-    background: linear-gradient(145deg, #6B2D5E 0%, #4A1D40 60%, #2C1128 100%);
-    padding: 40px 32px 36px;
-    position: relative;
-    overflow: hidden;
-  }
-  .hero-overlay {
-    position: absolute; inset: 0;
-    background-image:
-      radial-gradient(circle at 80% 20%, rgba(232,165,152,0.15) 0%, transparent 50%),
-      radial-gradient(circle at 20% 80%, rgba(196,150,106,0.12) 0%, transparent 45%);
-    pointer-events: none;
-  }
-  .hero-inner { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; }
-  .logo-row { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
-  .logo-icon {
-    width: 48px; height: 48px; border-radius: 50%;
-    background: rgba(232,165,152,0.15);
-    border: 1.5px solid rgba(232,165,152,0.4);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px;
-  }
-  .logo-text {
-    font-family: 'Playfair Display', serif;
-    font-size: 34px; font-weight: 400;
-    color: #FAF6F0; letter-spacing: 0.02em; line-height: 1;
-  }
-  .logo-text span { color: #E8A598; }
-  .logo-sub {
-    font-size: 10px; color: rgba(232,165,152,0.6);
-    letter-spacing: 0.3em; text-transform: uppercase;
-    margin-top: 4px; font-weight: 300;
-  }
+/* ── Header ── */
+.hero {
+background: linear-gradient(145deg, #6B2D5E 0%, #4A1D40 60%, #2C1128 100%);
+padding: 40px 32px 36px;
+position: relative;
+overflow: hidden;
+}
+.hero-overlay {
+position: absolute; inset: 0;
+background-image:
+radial-gradient(circle at 80% 20%, rgba(232,165,152,0.15) 0%, transparent 50%),
+radial-gradient(circle at 20% 80%, rgba(196,150,106,0.12) 0%, transparent 45%);
+pointer-events: none;
+}
+.hero-inner { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; }
+.logo-row { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+.logo-icon {
+width: 48px; height: 48px; border-radius: 50%;
+background: rgba(232,165,152,0.15);
+border: 1.5px solid rgba(232,165,152,0.4);
+display: flex; align-items: center; justify-content: center;
+font-size: 24px;
+}
+.logo-text {
+font-family: ‘Playfair Display’, serif;
+font-size: 34px; font-weight: 400;
+color: #FAF6F0; letter-spacing: 0.02em; line-height: 1;
+}
+.logo-text span { color: #E8A598; }
+.logo-sub {
+font-size: 10px; color: rgba(232,165,152,0.6);
+letter-spacing: 0.3em; text-transform: uppercase;
+margin-top: 4px; font-weight: 300;
+}
 
-  /* ── Main container ── */
-  .container { max-width: 720px; margin: 0 auto; padding: 36px 24px 80px; }
+/* ── Main container ── */
+.container { max-width: 720px; margin: 0 auto; padding: 36px 24px 80px; }
 
-  /* ── API key ── */
-  .api-section { margin-bottom: 28px; }
-  .field-label {
-    font-size: 9px; font-weight: 500; letter-spacing: 0.25em;
-    text-transform: uppercase; color: var(--stone); margin-bottom: 6px;
-  }
-  .api-row { display: flex; gap: 8px; }
-  input[type="password"], input[type="text"] {
-    flex: 1; background: #fff; border: 1px solid var(--dust);
-    border-radius: 8px; padding: 10px 14px; color: var(--ink);
-    font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none;
-  }
-  input:focus { border-color: var(--grape); }
-  .save-btn {
-    padding: 10px 18px; background: var(--grape); border: none;
-    border-radius: 8px; color: #FAF6F0; font-family: 'DM Sans', sans-serif;
-    font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap;
-  }
-  .save-btn:hover { background: var(--grape-dark); }
-  .key-status { font-size: 10px; margin-top: 5px; color: var(--stone); }
-  .key-status.ok { color: var(--good); }
-  .key-status.missing { color: var(--skip); }
+/* ── API key ── */
+.api-section { margin-bottom: 28px; }
+.field-label {
+font-size: 9px; font-weight: 500; letter-spacing: 0.25em;
+text-transform: uppercase; color: var(–stone); margin-bottom: 6px;
+}
+.api-row { display: flex; gap: 8px; }
+input[type=“password”], input[type=“text”] {
+flex: 1; background: #fff; border: 1px solid var(–dust);
+border-radius: 8px; padding: 10px 14px; color: var(–ink);
+font-family: ‘DM Sans’, sans-serif; font-size: 13px; outline: none;
+}
+input:focus { border-color: var(–grape); }
+.save-btn {
+padding: 10px 18px; background: var(–grape); border: none;
+border-radius: 8px; color: #FAF6F0; font-family: ‘DM Sans’, sans-serif;
+font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap;
+}
+.save-btn:hover { background: var(–grape-dark); }
+.key-status { font-size: 10px; margin-top: 5px; color: var(–stone); }
+.key-status.ok { color: var(–good); }
+.key-status.missing { color: var(–skip); }
 
-  /* ── Tabs ── */
-  .tabs {
-    display: flex; border: 1px solid var(--dust); border-radius: 8px;
-    overflow: hidden; width: fit-content; margin-bottom: 20px;
-    background: #fff;
-  }
-  .tab {
-    padding: 8px 20px; font-family: 'DM Sans', sans-serif; font-size: 11px;
-    font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-    cursor: pointer; background: transparent; border: none; color: var(--stone);
-  }
-  .tab.active { background: var(--grape); color: #FAF6F0; }
+/* ── Tabs ── */
+.tabs {
+display: flex; border: 1px solid var(–dust); border-radius: 8px;
+overflow: hidden; width: fit-content; margin-bottom: 20px;
+background: #fff;
+}
+.tab {
+padding: 8px 20px; font-family: ‘DM Sans’, sans-serif; font-size: 11px;
+font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+cursor: pointer; background: transparent; border: none; color: var(–stone);
+}
+.tab.active { background: var(–grape); color: #FAF6F0; }
 
-  /* ── Drop zone ── */
-  .drop-zone {
-    border: 1.5px dashed var(--dust); border-radius: 12px; padding: 40px 24px;
-    text-align: center; cursor: pointer; margin-bottom: 16px;
-    transition: background 0.15s, border-color 0.15s; background: #fff;
-  }
-  .drop-zone:hover, .drop-zone.over { background: var(--cream); border-color: var(--cork); }
-  .drop-icon { font-size: 28px; margin-bottom: 10px; }
-  .drop-title { font-family: 'Playfair Display', serif; font-size: 16px; color: var(--ink); margin-bottom: 4px; }
-  .drop-sub { font-size: 11px; color: var(--stone); letter-spacing: 0.04em; }
-  .file-name { font-size: 11px; color: var(--good); margin-top: 8px; font-weight: 500; }
+/* ── Drop zone ── */
+.drop-zone {
+border: 1.5px dashed var(–dust); border-radius: 12px; padding: 40px 24px;
+text-align: center; cursor: pointer; margin-bottom: 16px;
+transition: background 0.15s, border-color 0.15s; background: #fff;
+}
+.drop-zone:hover, .drop-zone.over { background: var(–cream); border-color: var(–cork); }
+.drop-icon { font-size: 28px; margin-bottom: 10px; }
+.drop-title { font-family: ‘Playfair Display’, serif; font-size: 16px; color: var(–ink); margin-bottom: 4px; }
+.drop-sub { font-size: 11px; color: var(–stone); letter-spacing: 0.04em; }
+.file-name { font-size: 11px; color: var(–good); margin-top: 8px; font-weight: 500; }
 
-  textarea {
-    width: 100%; min-height: 120px; background: #fff; border: 1px solid var(--dust);
-    border-radius: 10px; padding: 14px; color: var(--ink);
-    font-family: 'DM Sans', sans-serif; font-size: 13px; resize: vertical;
-    margin-bottom: 16px; outline: none; line-height: 1.6;
-  }
-  textarea:focus { border-color: var(--grape); }
-  textarea::placeholder { color: var(--dust); }
+textarea {
+width: 100%; min-height: 120px; background: #fff; border: 1px solid var(–dust);
+border-radius: 10px; padding: 14px; color: var(–ink);
+font-family: ‘DM Sans’, sans-serif; font-size: 13px; resize: vertical;
+margin-bottom: 16px; outline: none; line-height: 1.6;
+}
+textarea:focus { border-color: var(–grape); }
+textarea::placeholder { color: var(–dust); }
 
-  /* ── Preferences ── */
-  .section-label {
-    font-size: 9px; font-weight: 500; letter-spacing: 0.25em;
-    text-transform: uppercase; color: var(--stone); margin-bottom: 10px;
-  }
-  .prefs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; }
-  .pref-tag {
-    font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 5px 14px; border-radius: 50px; border: 1px solid var(--dust);
-    color: var(--stone); cursor: pointer; background: #fff;
-    transition: all 0.15s;
-  }
-  .pref-tag.on { background: var(--grape); color: #FAF6F0; border-color: var(--grape); }
+/* ── Preferences ── */
+.section-label {
+font-size: 9px; font-weight: 500; letter-spacing: 0.25em;
+text-transform: uppercase; color: var(–stone); margin-bottom: 10px;
+}
+.prefs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; }
+.pref-tag {
+font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+padding: 5px 14px; border-radius: 50px; border: 1px solid var(–dust);
+color: var(–stone); cursor: pointer; background: #fff;
+transition: all 0.15s;
+}
+.pref-tag.on { background: var(–grape); color: #FAF6F0; border-color: var(–grape); }
 
-  /* ── Analyze button ── */
-  .analyze-btn {
-    width: 100%; padding: 15px; font-family: 'DM Sans', sans-serif;
-    font-size: 12px; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase;
-    border: none; border-radius: 10px; background: var(--grape);
-    color: #FAF6F0; cursor: pointer; margin-bottom: 32px; transition: background 0.15s;
-  }
-  .analyze-btn:hover:not(:disabled) { background: var(--grape-dark); }
-  .analyze-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+/* ── Analyze button ── */
+.analyze-btn {
+width: 100%; padding: 15px; font-family: ‘DM Sans’, sans-serif;
+font-size: 12px; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase;
+border: none; border-radius: 10px; background: var(–grape);
+color: #FAF6F0; cursor: pointer; margin-bottom: 32px; transition: background 0.15s;
+}
+.analyze-btn:hover:not(:disabled) { background: var(–grape-dark); }
+.analyze-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-  /* ── Error ── */
-  .error {
-    background: var(--skip-bg); border: 1px solid rgba(196,97,74,0.25);
-    border-radius: 10px; padding: 14px 16px; font-size: 12px;
-    color: var(--skip); margin-bottom: 20px; line-height: 1.7;
-    word-break: break-word; display: none;
-  }
+/* ── Error ── */
+.error {
+background: var(–skip-bg); border: 1px solid rgba(196,97,74,0.25);
+border-radius: 10px; padding: 14px 16px; font-size: 12px;
+color: var(–skip); margin-bottom: 20px; line-height: 1.7;
+word-break: break-word; display: none;
+}
 
-  /* ── Loading ── */
-  .loading-box { padding: 48px 0; display: none; text-align: center; }
-  .spinner {
-    width: 36px; height: 36px; border: 2px solid var(--dust);
-    border-top-color: var(--grape); border-radius: 50%;
-    animation: spin 1s linear infinite; margin: 0 auto 20px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-title {
-    font-family: 'Playfair Display', serif; font-style: italic;
-    font-size: 16px; color: var(--grape); margin-bottom: 16px;
-  }
-  .progress-wrap { background: var(--cream); border-radius: 50px; height: 3px; overflow: hidden; margin-bottom: 8px; }
-  .progress-bar { height: 3px; border-radius: 50px; background: var(--grape); transition: width 0.4s ease; width: 0%; }
-  .progress-label { font-size: 10px; color: var(--stone); letter-spacing: 0.06em; }
+/* ── Loading ── */
+.loading-box { padding: 48px 0; display: none; text-align: center; }
+.spinner {
+width: 36px; height: 36px; border: 2px solid var(–dust);
+border-top-color: var(–grape); border-radius: 50%;
+animation: spin 1s linear infinite; margin: 0 auto 20px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-title {
+font-family: ‘Playfair Display’, serif; font-style: italic;
+font-size: 16px; color: var(–grape); margin-bottom: 16px;
+}
+.progress-wrap { background: var(–cream); border-radius: 50px; height: 3px; overflow: hidden; margin-bottom: 8px; }
+.progress-bar { height: 3px; border-radius: 50px; background: var(–grape); transition: width 0.4s ease; width: 0%; }
+.progress-label { font-size: 10px; color: var(–stone); letter-spacing: 0.06em; }
 
-  /* ── Legend ── */
-  .legend { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
-  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; letter-spacing: 0.06em; color: var(--stone); }
-  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .legend-match { margin-left: auto; display: none; align-items: center; gap: 6px; font-size: 10px; color: var(--stone); }
-  .match-pill-demo {
-    font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-    background: rgba(107,45,94,0.1); color: var(--grape); border-radius: 50px; padding: 2px 8px;
-  }
+/* ── Legend ── */
+.legend { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; letter-spacing: 0.06em; color: var(–stone); }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.legend-match { margin-left: auto; display: none; align-items: center; gap: 6px; font-size: 10px; color: var(–stone); }
+.match-pill-demo {
+font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+background: rgba(107,45,94,0.1); color: var(–grape); border-radius: 50px; padding: 2px 8px;
+}
 
-  /* ── Wine card ── */
-  .wine-card {
-    background: #fff; border: 1px solid var(--dust); border-radius: 14px;
-    margin-bottom: 12px; overflow: hidden;
-    box-shadow: 0 2px 12px rgba(107,45,94,0.06);
-    transition: border-color 0.3s, opacity 0.3s;
-  }
-  .wine-card.matched { border-color: var(--grape); }
-  .wine-card.enriching { opacity: 0.6; animation: pulse 1.4s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:0.6;} 50%{opacity:0.9;} }
+/* ── Wine card ── */
+.wine-card {
+background: #fff; border: 1px solid var(–dust); border-radius: 14px;
+margin-bottom: 12px; overflow: hidden;
+box-shadow: 0 2px 12px rgba(107,45,94,0.06);
+transition: border-color 0.3s, opacity 0.3s;
+}
+.wine-card.matched { border-color: var(–grape); }
+.wine-card.enriching { opacity: 0.6; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:0.6;} 50%{opacity:0.9;} }
 
-  .card-header {
-    background: var(--grape); padding: 6px 16px;
-    display: none;
-  }
-  .card-header.best { display: block; }
-  .card-header-label {
-    font-size: 9px; color: rgba(232,165,152,0.85);
-    letter-spacing: 0.25em; text-transform: uppercase;
-  }
+.card-header {
+background: var(–grape); padding: 6px 16px;
+display: none;
+}
+.card-header.best { display: block; }
+.card-header-label {
+font-size: 9px; color: rgba(232,165,152,0.85);
+letter-spacing: 0.25em; text-transform: uppercase;
+}
 
-  .card-body { padding: 18px 20px; display: flex; gap: 16px; align-items: flex-start; }
+.card-body { padding: 18px 20px; display: flex; gap: 16px; align-items: flex-start; }
 
-  .score-ring {
-    flex-shrink: 0; width: 54px; height: 54px; border-radius: 50%;
-    border: 2px solid; display: flex; align-items: center;
-    justify-content: center; flex-direction: column;
-  }
-  .score-num { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 400; line-height: 1; }
-  .score-lbl { font-size: 7px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--stone); margin-top: 1px; }
+.score-ring {
+flex-shrink: 0; width: 54px; height: 54px; border-radius: 50%;
+border: 2px solid; display: flex; align-items: center;
+justify-content: center; flex-direction: column;
+}
+.score-num { font-family: ‘Playfair Display’, serif; font-size: 22px; font-weight: 400; line-height: 1; }
+.score-lbl { font-size: 7px; letter-spacing: 0.15em; text-transform: uppercase; color: var(–stone); margin-top: 1px; }
 
-  .wine-body { flex: 1; min-width: 0; }
-  .wine-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
-  .wine-name { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--ink); }
-  .wine-vintage { font-family: 'Playfair Display', serif; font-style: italic; font-size: 16px; color: var(--grape); }
+.wine-body { flex: 1; min-width: 0; }
+.wine-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.wine-name { font-family: ‘Playfair Display’, serif; font-size: 18px; color: var(–ink); }
+.wine-vintage { font-family: ‘Playfair Display’, serif; font-style: italic; font-size: 16px; color: var(–grape); }
 
-  .live-badge {
-    font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-    background: var(--good-bg); color: var(--good); border-radius: 50px; padding: 2px 8px;
-  }
-  .est-badge {
-    font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-    background: var(--cream); color: var(--stone); border-radius: 50px; padding: 2px 8px;
-  }
-  .match-badges { display: flex; flex-wrap: wrap; gap: 4px; }
-  .match-badge {
-    font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-    background: rgba(107,45,94,0.08); color: var(--grape); border-radius: 50px; padding: 2px 8px;
-  }
+.live-badge {
+font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+background: var(–good-bg); color: var(–good); border-radius: 50px; padding: 2px 8px;
+}
+.est-badge {
+font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+background: var(–cream); color: var(–stone); border-radius: 50px; padding: 2px 8px;
+}
+.match-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.match-badge {
+font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+background: rgba(107,45,94,0.08); color: var(–grape); border-radius: 50px; padding: 2px 8px;
+}
 
-  .wine-type-row {
-    font-size: 10px; color: var(--stone); letter-spacing: 0.1em;
-    text-transform: uppercase; margin-bottom: 12px;
-  }
+.wine-type-row {
+font-size: 10px; color: var(–stone); letter-spacing: 0.1em;
+text-transform: uppercase; margin-bottom: 12px;
+}
 
-  .wine-meta-row {
-    display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;
-    padding-bottom: 14px; border-bottom: 1px solid var(--dust);
-  }
-  .meta-cell { min-width: 58px; }
-  .meta-lbl { font-size: 8px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--stone); margin-bottom: 3px; }
-  .meta-val { font-size: 13px; font-weight: 500; color: var(--ink); }
-  .meta-val.good { color: var(--good); }
-  .meta-val.warn { color: var(--fair); }
-  .meta-val.bad  { color: var(--skip); }
-  .review-count { font-size: 10px; color: var(--stone); margin-left: 3px; font-weight: 300; }
+.wine-meta-row {
+display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;
+padding-bottom: 14px; border-bottom: 1px solid var(–dust);
+}
+.meta-cell { min-width: 58px; }
+.meta-lbl { font-size: 8px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(–stone); margin-bottom: 3px; }
+.meta-val { font-size: 13px; font-weight: 500; color: var(–ink); }
+.meta-val.good { color: var(–good); }
+.meta-val.warn { color: var(–fair); }
+.meta-val.bad  { color: var(–skip); }
+.review-count { font-size: 10px; color: var(–stone); margin-left: 3px; font-weight: 300; }
 
-  .wine-verdict {
-    font-family: 'Playfair Display', serif; font-style: italic;
-    font-size: 13px; color: var(--grape); line-height: 1.6; margin-bottom: 10px;
-  }
-  .pairings { display: flex; flex-wrap: wrap; gap: 5px; }
-  .pairing {
-    font-size: 9px; color: var(--stone); border: 1px solid var(--dust);
-    border-radius: 50px; padding: 3px 10px; letter-spacing: 0.05em;
-  }
+.wine-verdict {
+font-family: ‘Playfair Display’, serif; font-style: italic;
+font-size: 13px; color: var(–grape); line-height: 1.6; margin-bottom: 10px;
+}
+.pairings { display: flex; flex-wrap: wrap; gap: 5px; }
+.pairing {
+font-size: 9px; color: var(–stone); border: 1px solid var(–dust);
+border-radius: 50px; padding: 3px 10px; letter-spacing: 0.05em;
+}
 
-  /* ── Pre-filter bar ── */
-  .pre-filter-bar {
-    background: var(--cream);
-    border: 1px solid var(--dust);
-    border-radius: 10px;
-    padding: 16px 18px;
-    margin-bottom: 20px;
-  }
-  .pre-filter-row {
-    display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
-  }
-  .pre-filter-row .filter-group { flex: 1; min-width: 140px; }
+/* ── Pre-filter bar ── */
+.pre-filter-bar {
+background: var(–cream);
+border: 1px solid var(–dust);
+border-radius: 10px;
+padding: 16px 18px;
+margin-bottom: 20px;
+}
+.pre-filter-row {
+display: flex;
+gap: 24px;
+flex-wrap: wrap;
+}
+.pre-filter-row .filter-group { flex: 1; min-width: 140px; }
 
-  /* ── Upload preview state ── */
-  .upload-browse-btn {
-    margin-top: 14px; padding: 9px 22px; background: var(--grape);
-    border: none; border-radius: 8px; color: #FAF6F0;
-    font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500;
-    cursor: pointer; letter-spacing: 0.05em;
-  }
-  .upload-browse-btn:hover { background: var(--grape-dark); }
-  .drop-zone.has-file { background: rgba(74,155,111,0.06); border-color: var(--good); border-style: solid; cursor: default; }
-  .upload-preview-icon { font-size: 36px; margin-bottom: 10px; }
-  .upload-preview-name {
-    font-family: 'Playfair Display', serif; font-size: 16px;
-    color: var(--ink); margin-bottom: 4px; word-break: break-all;
-  }
-  .upload-preview-size { font-size: 11px; color: var(--stone); margin-bottom: 14px; }
-  .upload-change-btn {
-    padding: 6px 16px; background: transparent; border: 1px solid var(--dust);
-    border-radius: 6px; color: var(--stone); font-family: 'DM Sans', sans-serif;
-    font-size: 11px; cursor: pointer;
-  }
-  .upload-change-btn:hover { border-color: var(--stone); color: var(--ink); }
+/* ── Upload preview state ── */
+.upload-browse-btn {
+margin-top: 14px; padding: 9px 22px; background: var(–grape);
+border: none; border-radius: 8px; color: #FAF6F0;
+font-family: ‘DM Sans’, sans-serif; font-size: 12px; font-weight: 500;
+cursor: pointer; letter-spacing: 0.05em;
+}
+.upload-browse-btn:hover { background: var(–grape-dark); }
+.drop-zone.has-file { background: rgba(74,155,111,0.06); border-color: var(–good); border-style: solid; cursor: default; }
+.upload-preview-icon { font-size: 36px; margin-bottom: 10px; }
+.upload-preview-name {
+font-family: ‘Playfair Display’, serif; font-size: 16px;
+color: var(–ink); margin-bottom: 4px; word-break: break-all;
+}
+.upload-preview-size { font-size: 11px; color: var(–stone); margin-bottom: 14px; }
+.upload-change-btn {
+padding: 6px 16px; background: transparent; border: 1px solid var(–dust);
+border-radius: 6px; color: var(–stone); font-family: ‘DM Sans’, sans-serif;
+font-size: 11px; cursor: pointer;
+}
+.upload-change-btn:hover { border-color: var(–stone); color: var(–ink); }
 
-  .wine-count-banner {
-    background: var(--grape);
-    border-radius: 12px;
-    padding: 16px 22px;
-    margin-bottom: 16px;
-    display: none;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  .wine-count-banner.visible { display: flex; }
-  .wine-count-total {
-    font-family: 'Playfair Display', serif;
-    font-size: 22px;
-    color: #FAF6F0;
-    font-weight: 400;
-  }
-  .wine-count-sub {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 11px;
-    color: rgba(232,165,152,0.8);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
+.wine-count-banner {
+background: var(–grape);
+border-radius: 12px;
+padding: 16px 22px;
+margin-bottom: 16px;
+display: none;
+align-items: center;
+justify-content: space-between;
+flex-wrap: wrap;
+gap: 4px;
+}
+.wine-count-banner.visible { display: flex; }
+.wine-count-total {
+font-family: ‘Playfair Display’, serif;
+font-size: 22px;
+color: #FAF6F0;
+font-weight: 400;
+}
+.wine-count-sub {
+font-family: ‘DM Sans’, sans-serif;
+font-size: 11px;
+color: rgba(232,165,152,0.8);
+letter-spacing: 0.08em;
+text-transform: uppercase;
+}
 
-  /* ── Filter bar ── */
-  .filter-bar {
-    background: #fff; border: 1px solid var(--dust); border-radius: 12px;
-    padding: 18px 20px; margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(107,45,94,0.04);
-  }
-  .filter-row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; }
-  .filter-row:last-of-type { margin-bottom: 8px; }
-  .filter-group { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 160px; }
-  .filter-label { font-size: 9px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--stone); }
-  .filter-type-pills { display: flex; flex-wrap: wrap; gap: 5px; }
-  .type-pill {
-    font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
-    padding: 4px 12px; border-radius: 50px; border: 1px solid var(--dust);
-    color: var(--stone); cursor: pointer; background: transparent;
-  }
-  .type-pill.active { background: var(--grape); color: #FAF6F0; border-color: var(--grape); }
-  input[type="range"] { width: 100%; accent-color: var(--grape); cursor: pointer; }
-  select {
-    background: #fff; border: 1px solid var(--dust); border-radius: 8px;
-    padding: 8px 12px; color: var(--ink); font-family: 'DM Sans', sans-serif;
-    font-size: 12px; outline: none; cursor: pointer; width: 100%;
-  }
-  select:focus { border-color: var(--grape); }
-  .filter-reset-btn {
-    padding: 8px 16px; background: transparent; border: 1px solid var(--dust);
-    border-radius: 8px; color: var(--stone); font-family: 'DM Sans', sans-serif;
-    font-size: 11px; cursor: pointer; white-space: nowrap;
-  }
-  .filter-reset-btn:hover { border-color: var(--stone); color: var(--ink); }
-  .filter-count { font-size: 10px; color: var(--stone); letter-spacing: 0.05em; }
-  .no-results-msg {
-    font-family: 'Playfair Display', serif; font-style: italic;
-    font-size: 16px; color: var(--stone); text-align: center; padding: 40px 0;
-  }
+/* ── Filter bar ── */
+.filter-bar {
+background: #fff; border: 1px solid var(–dust); border-radius: 12px;
+padding: 18px 20px; margin-bottom: 20px;
+box-shadow: 0 2px 8px rgba(107,45,94,0.04);
+}
+.filter-row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; }
+.filter-row:last-of-type { margin-bottom: 8px; }
+.filter-group { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 160px; }
+.filter-label { font-size: 9px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(–stone); }
+.filter-type-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.type-pill {
+font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+padding: 4px 12px; border-radius: 50px; border: 1px solid var(–dust);
+color: var(–stone); cursor: pointer; background: transparent;
+}
+.type-pill.active { background: var(–grape); color: #FAF6F0; border-color: var(–grape); }
+input[type=“range”] { width: 100%; accent-color: var(–grape); cursor: pointer; }
+select {
+background: #fff; border: 1px solid var(–dust); border-radius: 8px;
+padding: 8px 12px; color: var(–ink); font-family: ‘DM Sans’, sans-serif;
+font-size: 12px; outline: none; cursor: pointer; width: 100%;
+}
+select:focus { border-color: var(–grape); }
+.filter-reset-btn {
+padding: 8px 16px; background: transparent; border: 1px solid var(–dust);
+border-radius: 8px; color: var(–stone); font-family: ‘DM Sans’, sans-serif;
+font-size: 11px; cursor: pointer; white-space: nowrap;
+}
+.filter-reset-btn:hover { border-color: var(–stone); color: var(–ink); }
+.filter-count { font-size: 10px; color: var(–stone); letter-spacing: 0.05em; }
+.no-results-msg {
+font-family: ‘Playfair Display’, serif; font-style: italic;
+font-size: 16px; color: var(–stone); text-align: center; padding: 40px 0;
+}
 </style>
+
 </head>
 <body>
 
 <!-- Header -->
+
 <div class="hero">
   <div class="hero-overlay"></div>
   <div class="hero-inner">
@@ -382,6 +385,7 @@
 <div class="container">
 
   <!-- API Key -->
+
   <div class="api-section">
     <div class="field-label">Anthropic API Key</div>
     <div class="api-row">
@@ -392,12 +396,14 @@
   </div>
 
   <!-- Tabs -->
+
   <div class="tabs">
     <button class="tab active" id="tab-pdf" onclick="switchTab('pdf')">PDF Upload</button>
     <button class="tab" id="tab-text" onclick="switchTab('text')">Paste List</button>
   </div>
 
   <!-- PDF panel -->
+
   <div id="panel-pdf">
     <div class="drop-zone" id="drop-zone"
       ondragover="event.preventDefault();this.classList.add('over')"
@@ -422,15 +428,18 @@
   </div>
 
   <!-- Text panel -->
+
   <div id="panel-text" style="display:none">
     <textarea id="wine-text" placeholder="Paste wine list text here...&#10;e.g. Opus One 2019  $280&#10;Silver Oak Cabernet 2018  $165"></textarea>
   </div>
 
   <!-- Preferences -->
+
   <div class="section-label" style="margin-top:4px">Your preferences — matched wines will be labeled</div>
   <div class="prefs" id="prefs"></div>
 
   <!-- Pre-filters: set before analyzing to limit Vivino lookups -->
+
   <div class="pre-filter-bar">
     <div class="section-label" style="margin-bottom:12px">Narrow results before analyzing — only matching wines get live ratings</div>
     <div class="pre-filter-row">
@@ -445,11 +454,12 @@
     </div>
   </div>
 
-  <button class="analyze-btn" id="analyze-btn" onclick="analyze()" disabled>Find My Best Bottle</button>
+<button class="analyze-btn" id="analyze-btn" onclick="analyze()" disabled>Find My Best Bottle</button>
 
   <div class="error" id="error-box"></div>
 
   <!-- Loading -->
+
   <div class="loading-box" id="loading-box">
     <div class="spinner"></div>
     <div class="loading-title" id="loading-title">Tasting the list...</div>
@@ -458,6 +468,7 @@
   </div>
 
   <!-- Results -->
+
   <div id="results-box">
     <div class="filter-bar">
       <div class="filter-row">
@@ -500,24 +511,27 @@
       <div class="filter-count" id="filter-count"></div>
     </div>
 
-    <div class="wine-count-banner" id="wine-count-banner">
-      <div class="wine-count-total" id="wine-count-total"></div>
-      <div class="wine-count-sub" id="wine-count-sub"></div>
-    </div>
+```
+<div class="wine-count-banner" id="wine-count-banner">
+  <div class="wine-count-total" id="wine-count-total"></div>
+  <div class="wine-count-sub" id="wine-count-sub"></div>
+</div>
 
-    <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:#4A9B6F"></div>Excellent (90+)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#7aba9a"></div>Good (80–89)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#C4966A"></div>Fair (70–79)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#C4614A"></div>Poor (&lt;70)</div>
-      <div class="legend-match" id="legend-match">
-        <span class="match-pill-demo">red</span> matches your preferences
-      </div>
-    </div>
-    <div id="cards"></div>
-    <div id="no-results" style="display:none">
-      <div class="no-results-msg">Nothing matched — try loosening the filters.</div>
-    </div>
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#4A9B6F"></div>Excellent (90+)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#7aba9a"></div>Good (80–89)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#C4966A"></div>Fair (70–79)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#C4614A"></div>Poor (&lt;70)</div>
+  <div class="legend-match" id="legend-match">
+    <span class="match-pill-demo">red</span> matches your preferences
+  </div>
+</div>
+<div id="cards"></div>
+<div id="no-results" style="display:none">
+  <div class="no-results-msg">Nothing matched — try loosening the filters.</div>
+</div>
+```
+
   </div>
 
 </div>
@@ -838,16 +852,31 @@ async function callClaude(messages, system, useSearch) {
   if (system)    body.system = system;
   if (useSearch) body.tools  = [{ type: "web_search_20250305", name: "web_search" }];
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true"
-    },
-    body: JSON.stringify(body)
-  });
+  const bodyStr = JSON.stringify(body);
+
+  // Warn if payload is very large — mobile browsers can fail silently above ~20MB
+  if (bodyStr.length > 18000000) {
+    throw new Error("File is too large to process on mobile. Try a smaller PDF or a photo of the wine list instead.");
+  }
+
+  let res;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: bodyStr
+    });
+  } catch (netErr) {
+    // Network-level failure — give a useful message
+    if (!apiKey) throw new Error("No API key set — tap Save after entering your key.");
+    throw new Error("Network error — check your connection and try again. (" + (netErr.message || "Load failed") + ")");
+  }
+
   const data = await res.json();
   if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
   if (data.stop_reason === "max_tokens") throw new Error("Response was cut off — the wine list may be very long. Try uploading one section at a time.");
@@ -977,6 +1006,17 @@ async function analyze() {
   document.getElementById("results-box").style.display = "none";
   document.getElementById("loading-box").style.display = "block";
   document.getElementById("analyze-btn").disabled = true;
+
+  // Re-read from storage in case Safari cleared in-memory state
+  if (!apiKey) apiKey = localStorage.getItem("isomm_key") || "";
+
+  // Early guards
+  if (!apiKey) {
+    document.getElementById("loading-box").style.display = "none";
+    document.getElementById("analyze-btn").disabled = false;
+    showError("No API key set — enter your Anthropic API key above and tap Save.");
+    return;
+  }
 
   const prefStr = selectedPrefs.length ? `User preferences: ${selectedPrefs.join(", ")}.` : "";
   let wines = [];
@@ -1190,5 +1230,6 @@ function updateCard(idx, wine) {
 buildPrefs();
 initKey();
 </script>
+
 </body>
 </html>
