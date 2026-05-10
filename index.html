@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>iSomm — Your Pocket Sommelier</title>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500&display=swap');
 
@@ -47,7 +49,11 @@
       radial-gradient(circle at 20% 80%, rgba(196,150,106,0.12) 0%, transparent 45%);
     pointer-events: none;
   }
-  .hero-inner { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; }
+  .hero-inner {
+    position: relative; z-index: 1; max-width: 720px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .logo-block { display: flex; flex-direction: column; }
   .logo-row { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
   .logo-icon {
     width: 48px; height: 48px; border-radius: 50%;
@@ -68,6 +74,37 @@
     margin-top: 4px; font-weight: 300;
   }
 
+  /* ── Header nav ── */
+  .header-nav {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .nav-link {
+    background: transparent;
+    border: 1px solid rgba(232,165,152,0.4);
+    color: #FAF6F0;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 8px 14px; border-radius: 50px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .nav-link:hover { background: rgba(232,165,152,0.15); border-color: rgba(232,165,152,0.7); }
+  .nav-link.signed-in {
+    background: rgba(232,165,152,0.15);
+    border-color: rgba(232,165,152,0.6);
+  }
+  .nav-link-email {
+    color: rgba(232,165,152,0.85);
+    font-size: 11px;
+    font-style: italic;
+    font-family: 'Playfair Display', serif;
+    letter-spacing: 0;
+    text-transform: none;
+    display: none;
+  }
+  .nav-link-email.visible { display: inline; }
+
   /* ── Main container ── */
   .container { max-width: 720px; margin: 0 auto; padding: 36px 24px 80px; }
 
@@ -78,7 +115,7 @@
     text-transform: uppercase; color: var(--stone); margin-bottom: 6px;
   }
   .api-row { display: flex; gap: 8px; }
-  input[type="password"], input[type="text"] {
+  input[type="password"], input[type="text"], input[type="email"] {
     flex: 1; background: #fff; border: 1px solid var(--dust);
     border-radius: 8px; padding: 10px 14px; color: var(--ink);
     font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none;
@@ -158,6 +195,14 @@
     border-radius: 10px; padding: 14px 16px; font-size: 12px;
     color: var(--skip); margin-bottom: 20px; line-height: 1.7;
     word-break: break-word; display: none;
+  }
+
+  /* ── Success message ── */
+  .success {
+    background: var(--good-bg); border: 1px solid rgba(74,155,111,0.25);
+    border-radius: 10px; padding: 14px 16px; font-size: 12px;
+    color: var(--good); margin-bottom: 20px; line-height: 1.7;
+    display: none;
   }
 
   /* ── Loading ── */
@@ -361,6 +406,88 @@
     font-family: 'Playfair Display', serif; font-style: italic;
     font-size: 16px; color: var(--stone); text-align: center; padding: 40px 0;
   }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(44,36,32,0.6);
+    z-index: 100; display: none; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal {
+    background: #fff; border-radius: 16px; max-width: 480px; width: 100%;
+    max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal-header {
+    background: linear-gradient(145deg, #6B2D5E 0%, #4A1D40 100%);
+    padding: 24px 28px; border-radius: 16px 16px 0 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title {
+    font-family: 'Playfair Display', serif; font-size: 22px;
+    color: #FAF6F0; font-weight: 400;
+  }
+  .modal-close {
+    background: transparent; border: none; color: rgba(232,165,152,0.8);
+    font-size: 26px; cursor: pointer; line-height: 1; padding: 0;
+  }
+  .modal-close:hover { color: #FAF6F0; }
+  .modal-body { padding: 24px 28px; }
+
+  /* ── History list ── */
+  .history-empty {
+    text-align: center; padding: 40px 20px;
+    font-family: 'Playfair Display', serif; font-style: italic;
+    font-size: 15px; color: var(--stone);
+  }
+  .history-item {
+    border: 1px solid var(--dust); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 10px; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .history-item:hover { border-color: var(--grape); background: var(--linen); }
+  .history-item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 6px; }
+  .history-item-name {
+    font-family: 'Playfair Display', serif; font-size: 16px;
+    color: var(--ink); flex: 1; word-break: break-word;
+  }
+  .history-item-date {
+    font-size: 10px; color: var(--stone); letter-spacing: 0.08em;
+    text-transform: uppercase; white-space: nowrap;
+  }
+  .history-item-meta { font-size: 11px; color: var(--stone); display: flex; gap: 14px; flex-wrap: wrap; }
+  .history-item-meta strong { color: var(--grape); font-weight: 500; }
+  .history-delete {
+    background: transparent; border: none; color: var(--skip);
+    font-size: 11px; cursor: pointer; padding: 4px 8px;
+    font-family: 'DM Sans', sans-serif; opacity: 0.7;
+  }
+  .history-delete:hover { opacity: 1; text-decoration: underline; }
+
+  /* ── Auth modal ── */
+  .auth-msg {
+    font-size: 13px; color: var(--stone); line-height: 1.6; margin-bottom: 16px;
+  }
+  .auth-msg strong { color: var(--ink); font-weight: 500; }
+  .auth-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .auth-sub {
+    font-size: 11px; color: var(--stone); margin-top: 12px; line-height: 1.6;
+  }
+  .auth-divider {
+    border-top: 1px solid var(--dust); margin: 20px 0;
+    position: relative; text-align: center;
+  }
+  .auth-divider span {
+    background: #fff; padding: 0 12px; position: relative; top: -8px;
+    font-size: 10px; color: var(--stone); letter-spacing: 0.2em; text-transform: uppercase;
+  }
+  .signout-btn {
+    background: transparent; border: 1px solid var(--skip);
+    color: var(--skip); padding: 8px 16px; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 11px;
+    cursor: pointer; letter-spacing: 0.05em;
+  }
+  .signout-btn:hover { background: var(--skip-bg); }
 </style>
 </head>
 <body>
@@ -369,12 +496,19 @@
 <div class="hero">
   <div class="hero-overlay"></div>
   <div class="hero-inner">
-    <div class="logo-row">
-      <div class="logo-icon">🍷</div>
-      <div>
-        <div class="logo-text">i<span>Somm</span></div>
-        <div class="logo-sub">Your pocket sommelier</div>
+    <div class="logo-block">
+      <div class="logo-row">
+        <div class="logo-icon">🍷</div>
+        <div>
+          <div class="logo-text">i<span>Somm</span></div>
+          <div class="logo-sub">Your pocket sommelier</div>
+        </div>
       </div>
+    </div>
+    <div class="header-nav">
+      <span class="nav-link-email" id="nav-email"></span>
+      <button class="nav-link" id="nav-history-btn" onclick="openHistory()">History</button>
+      <button class="nav-link" id="nav-auth-btn" onclick="openAuth()">Sign in</button>
     </div>
   </div>
 </div>
@@ -403,14 +537,12 @@
       ondragover="event.preventDefault();this.classList.add('over')"
       ondragleave="this.classList.remove('over')"
       ondrop="handleDrop(event)">
-      <!-- Empty state -->
       <div id="upload-empty">
         <div class="drop-icon">📄</div>
         <div class="drop-title">Drop in a wine list and we'll find your best bottle.</div>
         <div class="drop-sub">PDF or photo · tap to browse</div>
         <button class="upload-browse-btn" onclick="document.getElementById('file-input').click()">Choose File</button>
       </div>
-      <!-- Uploaded state -->
       <div id="upload-preview" style="display:none">
         <div class="upload-preview-icon" id="upload-preview-icon">📄</div>
         <div class="upload-preview-name" id="upload-preview-name"></div>
@@ -430,9 +562,9 @@
   <div class="section-label" style="margin-top:4px">Your preferences — matched wines will be labeled</div>
   <div class="prefs" id="prefs"></div>
 
-  <!-- Pre-filters: set before analyzing to limit Vivino lookups -->
+  <!-- Pre-filters: hard filter for which wines get analyzed -->
   <div class="pre-filter-bar">
-    <div class="section-label" style="margin-bottom:12px">Narrow results before analyzing — only matching wines get live ratings</div>
+    <div class="section-label" style="margin-bottom:12px">Narrow results before analyzing — only matching wines will be returned</div>
     <div class="pre-filter-row">
       <div class="filter-group">
         <div class="filter-label">Max bottle price: <span id="pre-price-val">Any</span></div>
@@ -448,6 +580,7 @@
   <button class="analyze-btn" id="analyze-btn" onclick="analyze()" disabled>Find My Best Bottle</button>
 
   <div class="error" id="error-box"></div>
+  <div class="success" id="success-box"></div>
 
   <!-- Loading -->
   <div class="loading-box" id="loading-box">
@@ -457,8 +590,8 @@
     <div class="progress-label" id="progress-label"></div>
   </div>
 
-  <!-- Results -->
-  <div id="results-box">
+  <!-- Results (hidden until analysis runs) -->
+  <div id="results-box" style="display:none">
     <div class="filter-bar">
       <div class="filter-row">
         <div class="filter-group">
@@ -522,8 +655,254 @@
 
 </div>
 
+<!-- History Modal -->
+<div class="modal-overlay" id="history-modal" onclick="closeIfOverlay(event, 'history-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Your Scan History</div>
+      <button class="modal-close" onclick="closeHistory()">×</button>
+    </div>
+    <div class="modal-body" id="history-body">
+      <div class="history-empty">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Auth Modal -->
+<div class="modal-overlay" id="auth-modal" onclick="closeIfOverlay(event, 'auth-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="auth-title">Sign in to sync</div>
+      <button class="modal-close" onclick="closeAuth()">×</button>
+    </div>
+    <div class="modal-body" id="auth-body">
+      <div id="auth-signin">
+        <div class="auth-msg">
+          <strong>Save your scans across devices.</strong><br>
+          Enter your email — we'll send a one-tap sign-in link. No password needed.
+        </div>
+        <div class="auth-row">
+          <input type="email" id="auth-email" placeholder="you@example.com" />
+          <button class="save-btn" onclick="sendMagicLink()">Send link</button>
+        </div>
+        <div class="auth-sub">Without signing in, your history is saved on this device only.</div>
+      </div>
+      <div id="auth-signedin" style="display:none">
+        <div class="auth-msg">
+          <strong>You're signed in as <span id="auth-signedin-email"></span>.</strong><br>
+          Your scans are syncing across all your devices.
+        </div>
+        <button class="signout-btn" onclick="signOut()">Sign out</button>
+      </div>
+      <div id="auth-sent" style="display:none">
+        <div class="auth-msg">
+          <strong>Check your inbox.</strong><br>
+          We sent a sign-in link to <span id="auth-sent-email"></span>. Click it to sign in — works on any device.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-const PREFS = ["Red","White","Rosé","Sparkling","Bold","Light","Dry","Under $80","Best Value"];
+// ═══════════════════════════════════════════════════════════════════════════
+// SUPABASE SETUP
+// ═══════════════════════════════════════════════════════════════════════════
+const SUPABASE_URL = "https://oxdlvafgfweomozvcimv.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94ZGx2YWZnZndlb21venZjaW12Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NDAwMDQsImV4cCI6MjA5NDAxNjAwNH0.5tbQYSCoqnZUC8tmDWPhs4K6axbv7-w7wmin6PH8n3w";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+let currentUser = null;
+
+async function initAuth() {
+  // Handle magic link callback
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    updateAuthUI();
+  }
+  // Listen for auth changes
+  sb.auth.onAuthStateChange((event, session) => {
+    currentUser = session ? session.user : null;
+    updateAuthUI();
+  });
+}
+
+function updateAuthUI() {
+  const navBtn   = document.getElementById("nav-auth-btn");
+  const navEmail = document.getElementById("nav-email");
+  if (currentUser) {
+    navBtn.textContent = "Account";
+    navBtn.classList.add("signed-in");
+    navEmail.textContent = currentUser.email;
+    navEmail.classList.add("visible");
+  } else {
+    navBtn.textContent = "Sign in";
+    navBtn.classList.remove("signed-in");
+    navEmail.classList.remove("visible");
+  }
+}
+
+function openAuth() {
+  document.getElementById("auth-modal").classList.add("visible");
+  if (currentUser) {
+    document.getElementById("auth-title").textContent = "Account";
+    document.getElementById("auth-signin").style.display    = "none";
+    document.getElementById("auth-sent").style.display      = "none";
+    document.getElementById("auth-signedin").style.display  = "block";
+    document.getElementById("auth-signedin-email").textContent = currentUser.email;
+  } else {
+    document.getElementById("auth-title").textContent = "Sign in to sync";
+    document.getElementById("auth-signin").style.display    = "block";
+    document.getElementById("auth-sent").style.display      = "none";
+    document.getElementById("auth-signedin").style.display  = "none";
+  }
+}
+function closeAuth() { document.getElementById("auth-modal").classList.remove("visible"); }
+
+async function sendMagicLink() {
+  const email = document.getElementById("auth-email").value.trim();
+  if (!email || !email.includes("@")) {
+    alert("Please enter a valid email address.");
+    return;
+  }
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.origin }
+  });
+  if (error) {
+    alert("Sign-in failed: " + error.message);
+    return;
+  }
+  document.getElementById("auth-sent-email").textContent = email;
+  document.getElementById("auth-signin").style.display = "none";
+  document.getElementById("auth-sent").style.display = "block";
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  closeAuth();
+}
+
+function closeIfOverlay(e, id) {
+  if (e.target.id === id) document.getElementById(id).classList.remove("visible");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HISTORY STORAGE (Supabase if signed in, localStorage fallback)
+// ═══════════════════════════════════════════════════════════════════════════
+async function saveScan(restaurantName, wines) {
+  const wineCount = wines.length;
+  const scanData = { wines, prefs: selectedPrefs };
+
+  if (currentUser) {
+    // Save to Supabase
+    const { error } = await sb.from("scans").insert({
+      user_id: currentUser.id,
+      restaurant_name: restaurantName,
+      wine_count: wineCount,
+      scan_data: scanData
+    });
+    if (error) console.error("Supabase save failed:", error);
+  } else {
+    // Save to localStorage
+    const local = JSON.parse(localStorage.getItem("isomm_history") || "[]");
+    local.unshift({
+      id: "local-" + Date.now(),
+      created_at: new Date().toISOString(),
+      restaurant_name: restaurantName,
+      wine_count: wineCount,
+      scan_data: scanData
+    });
+    // Cap at 50 local scans
+    localStorage.setItem("isomm_history", JSON.stringify(local.slice(0, 50)));
+  }
+}
+
+async function loadHistory() {
+  if (currentUser) {
+    const { data, error } = await sb.from("scans")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Supabase load failed:", error);
+      return [];
+    }
+    return data || [];
+  } else {
+    return JSON.parse(localStorage.getItem("isomm_history") || "[]");
+  }
+}
+
+async function deleteScan(id) {
+  if (typeof id === "string" && id.startsWith("local-")) {
+    const local = JSON.parse(localStorage.getItem("isomm_history") || "[]");
+    localStorage.setItem("isomm_history", JSON.stringify(local.filter(s => s.id !== id)));
+  } else if (currentUser) {
+    await sb.from("scans").delete().eq("id", id);
+  }
+}
+
+async function openHistory() {
+  document.getElementById("history-modal").classList.add("visible");
+  const body = document.getElementById("history-body");
+  body.innerHTML = '<div class="history-empty">Loading...</div>';
+
+  const scans = await loadHistory();
+  if (!scans.length) {
+    body.innerHTML = '<div class="history-empty">No scans yet — analyze a wine list and it\'ll appear here.</div>';
+    return;
+  }
+
+  body.innerHTML = scans.map(s => {
+    const date = new Date(s.created_at);
+    const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timeStr = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    return `
+      <div class="history-item" onclick="reloadScan('${s.id}')">
+        <div class="history-item-top">
+          <div class="history-item-name">${escapeHtml(s.restaurant_name || "Untitled List")}</div>
+          <div class="history-item-date">${dateStr} · ${timeStr}</div>
+        </div>
+        <div class="history-item-meta">
+          <span><strong>${s.wine_count}</strong> wines</span>
+          <button class="history-delete" onclick="event.stopPropagation();deleteHistoryItem('${s.id}')">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function closeHistory() { document.getElementById("history-modal").classList.remove("visible"); }
+
+async function deleteHistoryItem(id) {
+  if (!confirm("Delete this scan?")) return;
+  await deleteScan(id);
+  openHistory();
+}
+
+async function reloadScan(id) {
+  const scans = await loadHistory();
+  const scan = scans.find(s => String(s.id) === String(id));
+  if (!scan) return;
+  closeHistory();
+  selectedPrefs = scan.scan_data.prefs || [];
+  // Update preference UI
+  document.querySelectorAll(".pref-tag").forEach(btn => {
+    btn.classList.toggle("on", selectedPrefs.includes(btn.textContent));
+  });
+  renderCards(scan.scan_data.wines.map(w => ({ ...w, enriching: false })));
+  document.getElementById("results-box").scrollIntoView({ behavior: "smooth" });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PREFERENCES
+// ═══════════════════════════════════════════════════════════════════════════
+const PREFS = ["Red","White","Rosé","Sparkling","Bold","Light","Dry"];
 const PREF_RULES = {
   "Red":       w => w.type === "Red",
   "White":     w => w.type === "White",
@@ -531,22 +910,17 @@ const PREF_RULES = {
   "Sparkling": w => w.type === "Sparkling",
   "Bold":      w => (w.matched_attributes||[]).includes("bold"),
   "Light":     w => (w.matched_attributes||[]).includes("light"),
-  "Dry":       w => (w.matched_attributes||[]).includes("dry"),
-  "Under $80": w => w.menu_price != null && w.menu_price < 80,
-  "Best Value":w => w.value_score >= 80
+  "Dry":       w => (w.matched_attributes||[]).includes("dry")
 };
 
-// Scoring: 60% Vivino, 40% Markup
-// Markup tolerance scales with price — expensive bottles get more leeway
-// e.g. $50 bottle: good markup = 100-150%, $500 bottle: good markup = 150-200%
-// Tiers: 90+ excellent, 80-89 good, 70-79 fair, <70 poor
+// ═══════════════════════════════════════════════════════════════════════════
+// SCORING
+// ═══════════════════════════════════════════════════════════════════════════
 function calcScore(vivino, markup, menuPrice) {
   const vivinoPoints = Math.min((vivino / 5) * 60, 60);
-  // Price-adjusted markup ceiling: base 250%, scales up for expensive bottles
-  // At $100 menu price: ceiling = 250%. At $500: ceiling = 300%. At $2000+: ceiling = 400%
   const price = menuPrice || 100;
   const markupCeiling = Math.min(250 + Math.log10(Math.max(price / 100, 1)) * 100, 450);
-  const markupFloor   = 80; // below this = excellent value regardless of price
+  const markupFloor   = 80;
   const markupPoints  = Math.min(Math.max((markupCeiling - markup) / (markupCeiling - markupFloor), 0), 1) * 40;
   return Math.round(vivinoPoints + markupPoints);
 }
@@ -564,6 +938,9 @@ function markupClass(pct) {
   return "bad";
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
 let selectedPrefs = [];
 let uploadedFile = null;
 let uploadedFileType = null;
@@ -571,6 +948,7 @@ let activeTab = "pdf";
 let apiKey = localStorage.getItem("isomm_key") || "";
 let preMaxPrice  = 1000;
 let preMinVivino = 0;
+let lastRestaurantName = "Untitled List";
 
 function updatePreFilters() {
   preMaxPrice  = parseInt(document.getElementById("pre-filter-price").value);
@@ -634,7 +1012,6 @@ function setUploadPreview(file) {
   nameEl.textContent = file.name;
 
   if (isImage) {
-    // Show actual thumbnail
     const url = URL.createObjectURL(file);
     iconEl.innerHTML = `<img src="${url}" alt="preview" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--dust);" onload="URL.revokeObjectURL(this.src)">`;
   } else {
@@ -653,7 +1030,7 @@ function handleDrop(e) {
   } else if (f.type.startsWith("image/")) {
     uploadedFile = f; uploadedFileType = "image"; setUploadPreview(f);
   } else {
-    showError("Something went sideways — please upload a PDF or image file.");
+    showError("Please upload a PDF or image file.");
   }
   checkReady();
 }
@@ -666,13 +1043,15 @@ function handleFileInput(e) {
   } else if (f.type.startsWith("image/")) {
     uploadedFile = f; uploadedFileType = "image"; setUploadPreview(f);
   } else {
-    showError("Something went sideways — please upload a PDF or image file.");
+    showError("Please upload a PDF or image file.");
     return;
   }
   checkReady();
 }
 
-// ── Filter state ───────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// FILTERS (POST-RESULTS)
+// ═══════════════════════════════════════════════════════════════════════════
 let allWines     = [];
 let activeType   = "All";
 let maxPrice     = 1000;
@@ -772,6 +1151,15 @@ function showError(msg) {
   const el = document.getElementById("error-box");
   el.textContent = msg;
   el.style.display = "block";
+  document.getElementById("success-box").style.display = "none";
+}
+
+function showSuccess(msg) {
+  const el = document.getElementById("success-box");
+  el.textContent = msg;
+  el.style.display = "block";
+  document.getElementById("error-box").style.display = "none";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
 }
 
 function setProgress(pct, label, title) {
@@ -789,7 +1177,6 @@ function toBase64(file) {
   });
 }
 
-// Compress and resize images to stay under Anthropic's 5MB base64 limit
 function compressImage(file, maxBytes = 4500000) {
   return new Promise((res, rej) => {
     const img = new Image();
@@ -798,7 +1185,6 @@ function compressImage(file, maxBytes = 4500000) {
       URL.revokeObjectURL(url);
       const canvas = document.createElement("canvas");
       let { width, height } = img;
-      // Scale down if large — max 2000px on longest side
       const maxDim = 2000;
       if (width > maxDim || height > maxDim) {
         const scale = maxDim / Math.max(width, height);
@@ -808,7 +1194,6 @@ function compressImage(file, maxBytes = 4500000) {
       canvas.width  = width;
       canvas.height = height;
       canvas.getContext("2d").drawImage(img, 0, 0, width, height);
-      // Try quality levels until under size limit
       let quality = 0.85;
       const tryEncode = () => {
         const dataUrl = canvas.toDataURL("image/jpeg", quality);
@@ -827,8 +1212,52 @@ function compressImage(file, maxBytes = 4500000) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PDF TEXT EXTRACTION (for chunking long lists)
+// ═══════════════════════════════════════════════════════════════════════════
+async function extractPdfText(file) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+  const arrayBuf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+  let fullText = "";
+  let restaurantName = null;
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const pageText = content.items.map(it => it.str).join(" ");
+    if (i === 1) {
+      // Try to extract restaurant name from first page
+      const firstLines = pageText.split(/\s{2,}/).slice(0, 5).join(" ").trim();
+      const match = firstLines.match(/^([A-ZÀ-Ÿ][A-ZÀ-Ÿ\s&'.,\-]{2,40})/);
+      if (match) restaurantName = match[1].trim();
+    }
+    fullText += pageText + "\n\n";
+  }
+  return { text: fullText, restaurantName };
+}
+
+function chunkPdfText(text, targetCharsPerChunk = 12000) {
+  // Split on double newlines (page breaks) and reassemble
+  const blocks = text.split(/\n\n+/);
+  const chunks = [];
+  let current = "";
+  for (const block of blocks) {
+    if (current.length + block.length > targetCharsPerChunk && current.length > 0) {
+      chunks.push(current);
+      current = block + "\n\n";
+    } else {
+      current += block + "\n\n";
+    }
+  }
+  if (current.trim()) chunks.push(current);
+  return chunks;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CLAUDE API
+// ═══════════════════════════════════════════════════════════════════════════
 async function callClaude(messages, system, useSearch) {
-  const maxTok = useSearch ? 1000 : 32000;
+  const maxTok = useSearch ? 1000 : 16000;
   const body = {
     model: "claude-sonnet-4-20250514",
     max_tokens: maxTok,
@@ -840,9 +1269,8 @@ async function callClaude(messages, system, useSearch) {
 
   const bodyStr = JSON.stringify(body);
 
-  // Warn if payload is very large — mobile browsers can fail silently above ~20MB
   if (bodyStr.length > 18000000) {
-    throw new Error("File is too large to process on mobile. Try a smaller PDF or a photo of the wine list instead.");
+    throw new Error("File is too large. Try a smaller PDF or photo.");
   }
 
   let res;
@@ -858,18 +1286,28 @@ async function callClaude(messages, system, useSearch) {
       body: bodyStr
     });
   } catch (netErr) {
-    // Network-level failure — give a useful message
-    if (!apiKey) throw new Error("No API key set — tap Save after entering your key.");
+    if (!apiKey) throw new Error("No API key set — enter your key above and tap Save.");
     throw new Error("Network error — check your connection and try again. (" + (netErr.message || "Load failed") + ")");
   }
 
   const data = await res.json();
   if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  if (data.stop_reason === "max_tokens") throw new Error("Response was cut off — the wine list may be very long. Try uploading one section at a time.");
-  return data.content.map(b => b.text || "").filter(Boolean).join("");
+  return {
+    text: data.content.map(b => b.text || "").filter(Boolean).join(""),
+    truncated: data.stop_reason === "max_tokens"
+  };
 }
 
-const PARSE_PROMPT = `You are a wine list data extractor. Your job is to extract ONLY wines from the provided menu and return them as a JSON array.
+function buildParsePrompt(maxPrice, minVivino) {
+  let filterText = "";
+  const filters = [];
+  if (maxPrice < 1000)    filters.push(`menu price (bottle price) is $${maxPrice} or LESS`);
+  if (minVivino > 0)      filters.push(`estimated Vivino rating is ${minVivino.toFixed(1)} or HIGHER`);
+  if (filters.length) {
+    filterText = `\n\nHARD FILTER — ONLY include wines where ALL of these are true:\n- ${filters.join("\n- ")}\n\nExclude every wine that does not meet ALL criteria. Do not include them in the output at all.`;
+  }
+
+  return `You are a wine list data extractor. Your job is to extract ONLY wines from the provided menu and return them as a JSON array.
 
 WHAT TO INCLUDE — wines only:
 - Still wines (Red, White, Rose)
@@ -885,13 +1323,12 @@ WHAT TO EXCLUDE — do not include any of these:
 - Food items
 - Section headers, descriptions, or marketing text
 - Wines by the glass that have NO bottle price listed
+- Quartino / half-bottle / pingüino formats — only include FULL BOTTLE entries${filterText}
 
 WINE EXTRACTION RULES:
-- Include EVERY distinct wine entry that has a bottle price listed
-- Include wines sold by the glass ONLY if they also have a bottle price listed
-- Do NOT skip any wine — if a wine appears multiple times with different vintages, include each vintage as a separate entry
-- Do NOT include large format (magnums, jeroboams) as separate entries unless that is the only format listed
-- Be completely consistent — the same list should always produce the same number of entries
+- Include EVERY distinct full-bottle wine entry that meets the criteria above
+- If a wine appears with multiple vintages and each has its own price, include each vintage as a separate entry
+- Be completely consistent — the same list with the same filters should always produce the same number of entries
 
 SCORING FORMULA — apply exactly:
   vivinoPoints = Math.min((vivino_rating / 5) * 60, 60)
@@ -901,22 +1338,16 @@ SCORING FORMULA — apply exactly:
 Markup guide: 100% markup (restaurant charges 2x retail) = excellent = 40/40 pts. 300%+ = 0 pts.
 Score tiers: 90+ excellent, 80-89 good, 70-79 fair, below 70 poor.
 
-For each wine return ONLY these compact fields — nothing else:
-- n: wine name (string, keep it short — producer and wine name only, no region/appellation)
+For each wine return ONLY these compact fields:
+- n: wine name (string, producer + wine name only, no region/appellation)
 - v: vintage year (string or null)
-- p: menu price (integer, no dollar sign, null if not listed)
+- p: menu price (integer, no dollar sign)
 - r: estimated retail price USD (integer)
 - m: markup percentage above retail (integer, 100 = 2x retail)
 - vr: estimated Vivino rating (float, 1 decimal)
-- s: value score (integer, use formula above)
+- s: value score (integer, use formula)
 - t: type (one letter: R=Red W=White P=Rose S=Sparkling D=Dessert)
 - a: matched attributes (compact array, use first letter only: b=bold l=light d=dry sw=sweet t=tannic sm=smooth e=earthy f=fruity)
-
-CRITICAL — keep output minimal:
-- Use short field names as listed above
-- No verdict text, no pairings, no long strings
-- Name field: producer + wine name only, drop region/vintage/appellation from name
-- The entire response must be under 20000 tokens
 
 CRITICAL JSON RULES:
 - Straight double quotes only, never curly/smart quotes
@@ -924,6 +1355,7 @@ CRITICAL JSON RULES:
 - Output must be parseable by JSON.parse()
 
 Respond ONLY with a valid JSON array starting with [ and ending with ]. No markdown, no preamble.`;
+}
 
 async function fetchVivinoRating(wine, attempt = 1) {
   const prompt = `Search Vivino for the community rating of: "${wine.name}${wine.vintage ? " " + wine.vintage : ""}".
@@ -939,7 +1371,7 @@ Rules:
 - Respond with ONLY the JSON object, nothing else`;
 
   try {
-    const raw   = await callClaude([{ role: "user", content: prompt }], null, true);
+    const { text: raw } = await callClaude([{ role: "user", content: prompt }], null, true);
     const match = raw.replace(/```json|```/g, "").trim().match(/\{[\s\S]*?\}/);
     if (!match) throw new Error("no match");
     const result = JSON.parse(match[0]);
@@ -955,7 +1387,6 @@ Rules:
 }
 
 function safeParseWines(raw) {
-  // Step 1: normalize unicode punctuation
   let s = raw
     .replace(/```json|```/g, "")
     .replace(/[\u2018\u2019\u02BC]/g, "'")
@@ -964,39 +1395,100 @@ function safeParseWines(raw) {
     .replace(/[\u2026]/g, "...")
     .trim();
 
-  // Step 2: extract the JSON array
   const start = s.indexOf("[");
   const end   = s.lastIndexOf("]");
-  if (start === -1 || end === -1) return null;
-  s = s.slice(start, end + 1);
+  if (start === -1) return null;
 
-  // Step 3: try parsing as-is
-  try { return JSON.parse(s); } catch (_) {}
+  // Try with closing bracket
+  if (end !== -1) {
+    let attempt = s.slice(start, end + 1);
+    try { return JSON.parse(attempt); } catch (_) {}
 
-  // Step 4: scrub control characters and unescaped newlines inside strings
-  s = s
-    .replace(/[\u0000-\u001F\u007F]/g, " ")  // strip control chars
-    .replace(/([^\\])\\([^"\\/bfnrtu])/g, "$1$2"); // remove bad escapes
+    attempt = attempt
+      .replace(/[\u0000-\u001F\u007F]/g, " ")
+      .replace(/([^\\])\\([^"\\/bfnrtu])/g, "$1$2");
+    try { return JSON.parse(attempt); } catch (_) {}
 
-  try { return JSON.parse(s); } catch (_) {}
+    try {
+      const result = Function('"use strict"; return (' + attempt + ')')();
+      return Array.isArray(result) ? result : null;
+    } catch (_) {}
+  }
 
-  // Step 5: last resort — ask the browser to eval it as a JS literal
-  try {
-    const result = Function('"use strict"; return (' + s + ')')();
-    return Array.isArray(result) ? result : null;
-  } catch (_) { return null; }
+  // Truncated response - try to salvage complete objects
+  let truncated = s.slice(start);
+  // Find last complete object
+  let depth = 0, lastComplete = -1, inString = false, escape = false;
+  for (let i = 0; i < truncated.length; i++) {
+    const c = truncated[i];
+    if (escape) { escape = false; continue; }
+    if (c === "\\") { escape = true; continue; }
+    if (c === '"' && !escape) inString = !inString;
+    if (inString) continue;
+    if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) lastComplete = i;
+    }
+  }
+  if (lastComplete > 0) {
+    const salvaged = truncated.slice(0, lastComplete + 1) + "]";
+    try { return JSON.parse(salvaged); } catch (_) {}
+  }
+  return null;
 }
 
+function normalizeWines(parsed) {
+  const TYPE_MAP = { R:"Red", W:"White", P:"Rose", S:"Sparkling", D:"Dessert" };
+  return parsed.map(w => ({
+    name:             w.name || w.n || "",
+    vintage:          w.vintage || w.v || null,
+    menu_price:       w.menu_price ?? w.p ?? null,
+    retail_price:     w.retail_price || w.r || null,
+    markup_pct:       w.markup_pct ?? w.m ?? 200,
+    vivino_rating:    w.vivino_rating || w.vr || 3.8,
+    value_score:      w.value_score || w.s || calcScore(w.vivino_rating || w.vr || 3.8, w.markup_pct || w.m || 200, w.menu_price || w.p || 100),
+    type:             TYPE_MAP[w.type] || w.type || TYPE_MAP[w.t] || w.t || "Red",
+    matched_attributes: w.matched_attributes || (w.a ? w.a.map(a => ({b:"bold",l:"light",d:"dry",sw:"sweet",t:"tannic",sm:"smooth",e:"earthy",f:"fruity"})[a] || a) : []),
+    verdict:          w.verdict || "",
+    pairings:         w.pairings || [],
+    review_count:     null,
+    rating_live:      false
+  }));
+}
+
+// Apply pre-filter to wines (belt-and-suspenders: also filter client-side
+// in case Claude misses any during extraction)
+function applyPreFilter(wines) {
+  return wines.filter(w => {
+    if (preMaxPrice < 1000 && w.menu_price != null && w.menu_price > preMaxPrice) return false;
+    if (preMinVivino > 0 && (w.vivino_rating || 0) < preMinVivino) return false;
+    return true;
+  });
+}
+
+// Dedupe by name + vintage
+function dedupeWines(wines) {
+  const seen = new Set();
+  return wines.filter(w => {
+    const key = (w.name || "").toLowerCase().trim() + "|" + (w.vintage || "");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN ANALYZE FLOW
+// ═══════════════════════════════════════════════════════════════════════════
 async function analyze() {
   document.getElementById("error-box").style.display   = "none";
+  document.getElementById("success-box").style.display = "none";
   document.getElementById("results-box").style.display = "none";
   document.getElementById("loading-box").style.display = "block";
   document.getElementById("analyze-btn").disabled = true;
 
-  // Re-read from storage in case Safari cleared in-memory state
   if (!apiKey) apiKey = localStorage.getItem("isomm_key") || "";
-
-  // Early guards
   if (!apiKey) {
     document.getElementById("loading-box").style.display = "none";
     document.getElementById("analyze-btn").disabled = false;
@@ -1005,95 +1497,119 @@ async function analyze() {
   }
 
   const prefStr = selectedPrefs.length ? `User preferences: ${selectedPrefs.join(", ")}.` : "";
+  const PARSE_PROMPT = buildParsePrompt(preMaxPrice, preMinVivino);
   let wines = [];
+  lastRestaurantName = "Untitled List";
 
   try {
     setProgress(5, "", "Tasting the list...");
-    let messages;
+
     if (activeTab === "pdf") {
       const isImage = uploadedFileType === "image";
-      let contentBlock;
+
       if (isImage) {
+        // Image path: single call (images don't benefit from chunking)
         setProgress(8, "", "Compressing image...");
         const { b64, mediaType } = await compressImage(uploadedFile);
-        contentBlock = { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } };
+        setProgress(15, "", "Extracting wines from image...");
+        const messages = [{ role: "user", content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
+          { type: "text", text: `Extract the wines from this restaurant wine list. ${prefStr}` }
+        ]}];
+        const { text: raw, truncated } = await callClaude(messages, PARSE_PROMPT, false);
+        if (truncated) console.warn("Image parse hit max_tokens — results may be incomplete");
+        const parsed = safeParseWines(raw);
+        if (!parsed) throw new Error("Couldn't parse the wine list. The image may be unclear — try a sharper photo or a PDF.");
+        wines = normalizeWines(parsed);
+        lastRestaurantName = uploadedFile.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
       } else {
-        const b64 = await toBase64(uploadedFile);
-        contentBlock = { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } };
+        // PDF path: extract text and chunk it
+        setProgress(10, "", "Reading the PDF...");
+        const { text: pdfText, restaurantName } = await extractPdfText(uploadedFile);
+        if (restaurantName) lastRestaurantName = restaurantName;
+        else lastRestaurantName = uploadedFile.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+
+        const chunks = chunkPdfText(pdfText, 12000);
+        setProgress(15, `Wine list split into ${chunks.length} section${chunks.length > 1 ? "s" : ""}`, "Tasting the list...");
+
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i];
+          setProgress(15 + Math.round((i / chunks.length) * 30), `Parsing section ${i + 1} of ${chunks.length}...`);
+          const messages = [{ role: "user", content: `Extract the wines from this section of a restaurant wine list. ${prefStr}\n\n${chunk}` }];
+          try {
+            const { text: raw, truncated } = await callClaude(messages, PARSE_PROMPT, false);
+            if (truncated) console.warn(`Chunk ${i+1} hit max_tokens — partial salvage`);
+            const parsed = safeParseWines(raw);
+            if (parsed && Array.isArray(parsed)) {
+              wines = wines.concat(normalizeWines(parsed));
+            }
+          } catch (chunkErr) {
+            console.warn(`Chunk ${i+1} failed:`, chunkErr.message);
+            // Continue to next chunk rather than failing the whole scan
+          }
+          if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 400));
+        }
+        wines = dedupeWines(wines);
       }
-      messages = [{ role: "user", content: [
-        contentBlock,
-        { type: "text", text: `This is a photo or scan of a restaurant wine list. Analyze it and return the JSON array. ${prefStr}` }
-      ]}];
     } else {
+      // Text paste path
       const txt = document.getElementById("wine-text").value.trim();
-      messages = [{ role: "user", content: `Analyze this restaurant wine list and return the JSON array. ${prefStr}\n\n${txt}` }];
+      lastRestaurantName = "Pasted List";
+      const messages = [{ role: "user", content: `Analyze this restaurant wine list and return the JSON array. ${prefStr}\n\n${txt}` }];
+      const { text: raw, truncated } = await callClaude(messages, PARSE_PROMPT, false);
+      if (truncated) console.warn("Text parse hit max_tokens");
+      const parsed = safeParseWines(raw);
+      if (!parsed) throw new Error("Couldn't parse the wine list. Try breaking it into smaller sections.");
+      wines = normalizeWines(parsed);
     }
 
-    const raw = await callClaude(messages, PARSE_PROMPT, false);
-    const parsed = safeParseWines(raw);
-    if (!parsed) throw new Error("Could not parse the wine list response. Please try again.");
+    // Belt-and-suspenders: filter client-side in case Claude included anything outside criteria
+    wines = applyPreFilter(wines);
 
-    // Normalize compact field names to full names
-    const TYPE_MAP = { R:"Red", W:"White", P:"Rose", S:"Sparkling", D:"Dessert" };
-    wines = parsed.map(w => ({
-      name:             w.name || w.n || "",
-      vintage:          w.vintage || w.v || null,
-      menu_price:       w.menu_price ?? w.p ?? null,
-      retail_price:     w.retail_price || w.r || null,
-      markup_pct:       w.markup_pct ?? w.m ?? 200,
-      vivino_rating:    w.vivino_rating || w.vr || 3.8,
-      value_score:      w.value_score || w.s || calcScore(w.vivino_rating || w.vr || 3.8, w.markup_pct || w.m || 200, w.menu_price || w.p || 100),
-      type:             TYPE_MAP[w.type] || w.type || TYPE_MAP[w.t] || w.t || "Red",
-      matched_attributes: w.matched_attributes || (w.a ? w.a.map(a => ({b:"bold",l:"light",d:"dry",sw:"sweet",t:"tannic",sm:"smooth",e:"earthy",f:"fruity"})[a] || a) : []),
-      verdict:          w.verdict || "",
-      pairings:         w.pairings || [],
-      review_count:     null,
-      rating_live:      false
-    }));
+    if (wines.length === 0) {
+      throw new Error("No wines matched your pre-scan filters. Try widening the price or Vivino criteria.");
+    }
 
-    setProgress(15, "Rendering initial results...", "List poured — applying filters...");
+    setProgress(45, "Rendering initial results...", "List poured — applying live ratings...");
     renderCards(wines);
 
-    // Only enrich wines that pass the pre-filters — skip the rest
-    const toEnrich = wines.filter(w => {
-      const priceOk  = preMaxPrice  >= 1000 || (w.menu_price != null && w.menu_price <= preMaxPrice);
-      const vivinoOk = preMinVivino <= 0    || (w.vivino_rating >= preMinVivino);
-      return priceOk && vivinoOk;
-    });
-
-    const enrichCount = toEnrich.length;
-    const totalCount  = wines.length;
+    // All filtered wines get live Vivino enrichment now (since pre-filter already trimmed)
+    const enrichCount = wines.length;
     let done = 0;
 
-    if (enrichCount === 0) {
-      setProgress(100, "No wines matched your filters — try widening them.", "Done");
-      applyFilters();
-      setTimeout(() => { document.getElementById("loading-box").style.display = "none"; }, 1200);
-    } else {
-      setProgress(15, `Fetching live ratings for ${enrichCount} wines (${totalCount - enrichCount} skipped by filters)...`);
+    setProgress(45, `Fetching live ratings for ${enrichCount} wine${enrichCount > 1 ? "s" : ""}...`);
 
-      for (let i = 0; i < enrichCount; i++) {
-        const wine   = toEnrich[i];
-        const origIdx = wines.indexOf(wine);
-        const result = await fetchVivinoRating(wine);
-        if (result && result.vivino_rating) {
-          wine.vivino_rating = parseFloat(parseFloat(result.vivino_rating).toFixed(1));
-          wine.review_count  = result.review_count || null;
-          wine.rating_live   = true;
-          wine.value_score   = calcScore(wine.vivino_rating, wine.markup_pct ?? 200, wine.menu_price);
-          if (result.verdict)  wine.verdict  = result.verdict;
-          if (result.pairings) wine.pairings = result.pairings;
-        }
-        done++;
-        setProgress(15 + Math.round((done / enrichCount) * 82), `Live ratings: ${done} of ${enrichCount}`);
-        updateCard(origIdx, wine);
-        if (i < enrichCount - 1) await new Promise(r => setTimeout(r, 300));
+    for (let i = 0; i < enrichCount; i++) {
+      const wine = wines[i];
+      const result = await fetchVivinoRating(wine);
+      if (result && result.vivino_rating) {
+        wine.vivino_rating = parseFloat(parseFloat(result.vivino_rating).toFixed(1));
+        wine.review_count  = result.review_count || null;
+        wine.rating_live   = true;
+        wine.value_score   = calcScore(wine.vivino_rating, wine.markup_pct ?? 200, wine.menu_price);
+        if (result.verdict)  wine.verdict  = result.verdict;
+        if (result.pairings) wine.pairings = result.pairings;
       }
+      done++;
+      setProgress(45 + Math.round((done / enrichCount) * 52), `Live ratings: ${done} of ${enrichCount}`);
+      updateCard(i, wine);
+      if (i < enrichCount - 1) await new Promise(r => setTimeout(r, 300));
+    }
 
-      setProgress(100, `${enrichCount} wines enriched · ${totalCount - enrichCount} used estimated scores`, "Your best pours are ready.");
-      applyFilters();
-      setTimeout(() => { document.getElementById("loading-box").style.display = "none"; }, 1400);
+    setProgress(100, `${enrichCount} wine${enrichCount > 1 ? "s" : ""} analyzed`, "Your best pours are ready.");
+    applyFilters();
+    setTimeout(() => { document.getElementById("loading-box").style.display = "none"; }, 1200);
+
+    // Save to history (Supabase or localStorage)
+    try {
+      await saveScan(lastRestaurantName, wines);
+      if (currentUser) {
+        showSuccess("Saved to your synced history.");
+      } else {
+        showSuccess("Saved on this device. Sign in to sync across devices.");
+      }
+    } catch (saveErr) {
+      console.error("Save scan failed:", saveErr);
     }
 
   } catch (err) {
@@ -1111,7 +1627,7 @@ function getMatchedPrefs(wine) {
 
 function buildCardHTML(wine, isLive, idx) {
   const score      = Math.round(wine.value_score ?? 0);
-  const isPending  = !isLive;
+  const isPending  = !isLive && wine.enriching;
   const col        = isPending
     ? { border: "var(--dust)", color: "var(--stone)" }
     : scoreColor(score);
@@ -1134,8 +1650,8 @@ function buildCardHTML(wine, isLive, idx) {
       </div>
       <div class="wine-body">
         <div class="wine-name-row">
-          <span class="wine-name">${wine.name}</span>
-          ${wine.vintage ? `<span class="wine-vintage">${wine.vintage}</span>` : ""}
+          <span class="wine-name">${escapeHtml(wine.name)}</span>
+          ${wine.vintage ? `<span class="wine-vintage">${escapeHtml(wine.vintage)}</span>` : ""}
           ${ratingBadge}
           ${badges ? `<div class="match-badges">${badges}</div>` : ""}
         </div>
@@ -1149,8 +1665,8 @@ function buildCardHTML(wine, isLive, idx) {
             <div class="meta-val">${wine.vivino_rating}${wine.review_count ? `<span class="review-count">(${wine.review_count.toLocaleString()})</span>` : ""}</div>
           </div>
         </div>
-        <div class="wine-verdict">${wine.verdict ? `"${wine.verdict}"` : ""}</div>
-        ${wine.pairings?.length ? `<div class="pairings">${wine.pairings.map(p => `<span class="pairing">${p}</span>`).join("")}</div>` : ""}
+        <div class="wine-verdict">${wine.verdict ? `"${escapeHtml(wine.verdict)}"` : ""}</div>
+        ${wine.pairings?.length ? `<div class="pairings">${wine.pairings.map(p => `<span class="pairing">${escapeHtml(p)}</span>`).join("")}</div>` : ""}
       </div>
     </div>`;
 }
@@ -1162,7 +1678,7 @@ function updateCountBanner(shown, total, enriched) {
   banner.classList.add("visible");
 
   if (shown === total) {
-    totalEl.textContent = total + " wines analyzed";
+    totalEl.textContent = total + " wine" + (total === 1 ? "" : "s") + " analyzed";
   } else {
     totalEl.textContent = shown + " of " + total + " wines shown";
   }
@@ -1183,20 +1699,9 @@ function updateCountBanner(shown, total, enriched) {
 }
 
 function renderCards(wines) {
-  allWines = wines.map(w => ({ ...w, enriching: true }));
-  // Sync post-results filter sliders to pre-filter values
-  if (preMaxPrice < 1000) {
-    document.getElementById("filter-price").value = preMaxPrice;
-    maxPrice = preMaxPrice;
-    document.getElementById("price-val").textContent = "$" + preMaxPrice;
-  }
-  if (preMinVivino > 0) {
-    document.getElementById("filter-vivino").value = preMinVivino;
-    minVivino = preMinVivino;
-    document.getElementById("vivino-val").textContent = preMinVivino.toFixed(1) + "+";
-  }
+  allWines = wines.map(w => ({ ...w, enriching: !w.rating_live }));
   document.getElementById("results-box").style.display = "block";
-  updateCountBanner(wines.length, wines.length, 0);
+  updateCountBanner(wines.length, wines.length, allWines.filter(w => !w.enriching).length);
   applyFilters();
 }
 
@@ -1213,8 +1718,12 @@ function updateCard(idx, wine) {
   updateCountBanner(shown, allWines.length, enriched);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
 buildPrefs();
 initKey();
+initAuth();
 </script>
 </body>
 </html>
