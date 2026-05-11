@@ -264,7 +264,19 @@
 
   .wine-body { flex: 1; min-width: 0; }
   .wine-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
-  .wine-name { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--ink); }
+  .wine-name {
+    font-family: 'Playfair Display', serif; font-size: 18px; color: var(--ink);
+    text-decoration: none; cursor: pointer;
+    transition: color 0.15s;
+    display: inline-flex; align-items: baseline; gap: 5px;
+  }
+  .wine-name:hover { color: var(--grape); }
+  .wine-name:hover .wine-name-text { text-decoration: underline; text-decoration-color: var(--rose); text-underline-offset: 3px; }
+  .wine-name-ext {
+    font-size: 11px; color: var(--stone); opacity: 0; transition: opacity 0.15s;
+    font-family: 'DM Sans', sans-serif; font-style: normal;
+  }
+  .wine-name:hover .wine-name-ext { opacity: 1; color: var(--grape); }
   .wine-vintage { font-family: 'Playfair Display', serif; font-style: italic; font-size: 16px; color: var(--grape); }
 
   .live-badge {
@@ -306,6 +318,13 @@
   .meta-val.warn { color: var(--fair); }
   .meta-val.bad  { color: var(--skip); }
   .review-count { font-size: 10px; color: var(--stone); margin-left: 3px; font-weight: 300; }
+  .vivino-link { text-decoration: none; color: inherit; cursor: pointer; display: inline-block; }
+  .vivino-link .vivino-arrow {
+    font-size: 11px; color: var(--stone); opacity: 0.5;
+    transition: opacity 0.15s, color 0.15s; margin-left: 2px;
+  }
+  .vivino-link:hover .meta-val { color: var(--grape); }
+  .vivino-link:hover .vivino-arrow { opacity: 1; color: var(--grape); }
 
   .wine-verdict {
     font-family: 'Playfair Display', serif; font-style: italic;
@@ -949,6 +968,15 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 }
 
+// Build a Vivino search URL for a wine — opens directly to search results for that wine
+function buildVivinoUrl(wine) {
+  const parts = [];
+  if (wine.name)    parts.push(wine.name);
+  if (wine.vintage) parts.push(wine.vintage);
+  const query = parts.join(" ").trim();
+  return `https://www.vivino.com/search/wines?q=${encodeURIComponent(query)}`;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // PREFERENCES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1358,15 +1386,25 @@ async function callClaude(messages, system, useSearch) {
 }
 
 function buildParsePrompt(maxPrice, minVivino) {
-  let filterText = "";
+  let filterPreamble = "";
   const filters = [];
-  if (maxPrice < 2500)    filters.push(`menu price (bottle price) is $${maxPrice} or LESS`);
-  if (minVivino > 0)      filters.push(`estimated Vivino rating is ${minVivino.toFixed(1)} or HIGHER`);
+  if (maxPrice < 2500)    filters.push(`The bottle price MUST be $${maxPrice} or LESS. Any wine priced above $${maxPrice} is FORBIDDEN — do not include it.`);
+  if (minVivino > 0)      filters.push(`The estimated Vivino rating MUST be ${minVivino.toFixed(1)} or HIGHER. Any wine you would rate below ${minVivino.toFixed(1)} is FORBIDDEN — do not include it.`);
   if (filters.length) {
-    filterText = `\n\nHARD FILTER — ONLY include wines where ALL of these are true:\n- ${filters.join("\n- ")}\n\nExclude every wine that does not meet ALL criteria. Do not include them in the output at all.`;
+    filterPreamble = `╔════════════════════════════════════════════════════════════════╗
+║  HIGHEST PRIORITY — STRICT EXCLUSION FILTERS                   ║
+║  These filters override everything else. If a wine fails ANY   ║
+║  of these criteria, you MUST NOT include it in your output:    ║
+╚════════════════════════════════════════════════════════════════╝
+
+${filters.map((f, i) => `${i+1}. ${f}`).join("\n")}
+
+These are HARD filters. Wines that fail any criterion must be completely omitted from the JSON array. Do not include them with notes, do not list them as excluded — simply do not output them.
+
+`;
   }
 
-  return `You are a wine list data extractor. Your job is to extract ONLY wines from the provided menu and return them as a JSON array.
+  return `${filterPreamble}You are a wine list data extractor. Your job is to extract ONLY wines from the provided menu and return them as a JSON array.
 
 WHAT TO INCLUDE — wines only:
 - Still wines (Red, White, Rose)
@@ -1395,7 +1433,7 @@ You MUST exclude every entry that is not a standard 750ml full bottle. Specifica
 - If a wine is listed BOTH as a smaller format AND as a full bottle, only include the full bottle entry once
 - When in doubt about the size, exclude the wine
 
-EVERY price you extract must represent a 750ml bottle. If you cannot confirm a price is for 750ml, exclude that wine.${filterText}
+EVERY price you extract must represent a 750ml bottle. If you cannot confirm a price is for 750ml, exclude that wine.
 
 WINE EXTRACTION RULES:
 - Include EVERY distinct 750ml full-bottle wine entry that meets all criteria above
@@ -1522,21 +1560,36 @@ function safeParseWines(raw) {
 
 function normalizeWines(parsed) {
   const TYPE_MAP = { R:"Red", W:"White", P:"Rose", S:"Sparkling", D:"Dessert" };
-  return parsed.map(w => ({
-    name:             w.name || w.n || "",
-    vintage:          w.vintage || w.v || null,
-    menu_price:       w.menu_price ?? w.p ?? null,
-    retail_price:     w.retail_price || w.r || null,
-    markup_pct:       w.markup_pct ?? w.m ?? 200,
-    vivino_rating:    w.vivino_rating || w.vr || 3.8,
-    value_score:      w.value_score || w.s || calcScore(w.vivino_rating || w.vr || 3.8, w.markup_pct || w.m || 200, w.menu_price || w.p || 100),
-    type:             TYPE_MAP[w.type] || w.type || TYPE_MAP[w.t] || w.t || "Red",
-    matched_attributes: w.matched_attributes || (w.a ? w.a.map(a => ({b:"bold",l:"light",d:"dry",sw:"sweet",t:"tannic",sm:"smooth",e:"earthy",f:"fruity"})[a] || a) : []),
-    verdict:          w.verdict || "",
-    pairings:         w.pairings || [],
-    review_count:     null,
-    rating_live:      false
-  }));
+  return parsed.map(w => {
+    // Force prices and ratings to numbers — Claude sometimes returns "149.00" strings
+    const rawPrice  = w.menu_price ?? w.p ?? null;
+    const rawRetail = w.retail_price ?? w.r ?? null;
+    const rawMarkup = w.markup_pct ?? w.m ?? null;
+    const rawVivino = w.vivino_rating ?? w.vr ?? null;
+    const rawScore  = w.value_score ?? w.s ?? null;
+
+    const menu_price    = rawPrice  != null ? Number(rawPrice)  : null;
+    const retail_price  = rawRetail != null ? Number(rawRetail) : null;
+    const markup_pct    = rawMarkup != null ? Number(rawMarkup) : 200;
+    const vivino_rating = rawVivino != null ? Number(rawVivino) : 3.8;
+    const value_score   = rawScore  != null ? Number(rawScore)  : calcScore(vivino_rating, markup_pct, menu_price);
+
+    return {
+      name:             w.name || w.n || "",
+      vintage:          w.vintage || w.v || null,
+      menu_price:       (menu_price != null && !isNaN(menu_price)) ? menu_price : null,
+      retail_price:     (retail_price != null && !isNaN(retail_price)) ? retail_price : null,
+      markup_pct:       !isNaN(markup_pct) ? markup_pct : 200,
+      vivino_rating:    !isNaN(vivino_rating) ? vivino_rating : 3.8,
+      value_score:      !isNaN(value_score) ? value_score : 70,
+      type:             TYPE_MAP[w.type] || w.type || TYPE_MAP[w.t] || w.t || "Red",
+      matched_attributes: w.matched_attributes || (w.a ? w.a.map(a => ({b:"bold",l:"light",d:"dry",sw:"sweet",t:"tannic",sm:"smooth",e:"earthy",f:"fruity"})[a] || a) : []),
+      verdict:          w.verdict || "",
+      pairings:         w.pairings || [],
+      review_count:     null,
+      rating_live:      false
+    };
+  });
 }
 
 // Apply pre-filter to wines (belt-and-suspenders: also filter client-side
@@ -1544,19 +1597,26 @@ function normalizeWines(parsed) {
 function applyPreFilter(wines) {
   // Keywords that indicate non-750ml formats — drop these client-side as a safety net
   const NON_BOTTLE_KEYWORDS = /\b(quartino|pingüino|pinguino|magnum|jeroboam|half[\s-]?bottle|375\s?ml|250\s?ml|500\s?ml|1\.5\s?l|3\s?l|large\s?format|carafe|pitcher|by\s?the\s?glass|btg)\b/i;
-  return wines.filter(w => {
+  const before = wines.length;
+  let droppedNoPrice = 0, droppedSize = 0, droppedShortName = 0, droppedPrice = 0, droppedVivino = 0;
+
+  const result = wines.filter(w => {
     // HARD DROP: any wine without a real numeric price is junk extraction
-    if (w.menu_price == null || isNaN(w.menu_price) || w.menu_price <= 0) return false;
+    if (w.menu_price == null || isNaN(w.menu_price) || w.menu_price <= 0) { droppedNoPrice++; return false; }
     // Bottle-size client-side filter
     const nameCheck = w.name || "";
-    if (NON_BOTTLE_KEYWORDS.test(nameCheck)) return false;
+    if (NON_BOTTLE_KEYWORDS.test(nameCheck)) { droppedSize++; return false; }
     // Drop entries with empty/garbage names (extraction artifacts)
-    if (nameCheck.trim().length < 3) return false;
-    // Pre-scan price/Vivino filters
-    if (preMaxPrice < 2500 && w.menu_price > preMaxPrice) return false;
-    if (preMinVivino > 0 && (w.vivino_rating || 0) < preMinVivino) return false;
+    if (nameCheck.trim().length < 3) { droppedShortName++; return false; }
+    // Pre-scan price filter — strict
+    if (preMaxPrice < 2500 && w.menu_price > preMaxPrice) { droppedPrice++; return false; }
+    // Pre-scan Vivino filter — strict, drop anything below threshold (including default 3.8)
+    if (preMinVivino > 0 && (w.vivino_rating || 0) < preMinVivino) { droppedVivino++; return false; }
     return true;
   });
+
+  console.log(`[iSomm pre-filter] ${before} → ${result.length} wines. Dropped: ${droppedNoPrice} no-price, ${droppedSize} non-bottle, ${droppedShortName} bad-name, ${droppedPrice} over $${preMaxPrice}, ${droppedVivino} below ${preMinVivino} Vivino`);
+  return result;
 }
 
 // Dedupe by name + vintage
@@ -1771,8 +1831,10 @@ function buildCardHTML(wine, isLive, idx) {
       </div>
       <div class="wine-body">
         <div class="wine-name-row">
-          <span class="wine-name">${escapeHtml(wine.name)}</span>
-          ${wine.vintage ? `<span class="wine-vintage">${escapeHtml(wine.vintage)}</span>` : ""}
+          <a href="${buildVivinoUrl(wine)}" target="_blank" rel="noopener noreferrer" class="wine-name" title="Look up on Vivino">
+            <span class="wine-name-text">${escapeHtml(wine.name)}</span>${wine.vintage ? ` <span class="wine-vintage">${escapeHtml(wine.vintage)}</span>` : ""}
+            <span class="wine-name-ext">↗ Vivino</span>
+          </a>
           ${ratingBadge}
           ${badges ? `<div class="match-badges">${badges}</div>` : ""}
         </div>
@@ -1783,7 +1845,9 @@ function buildCardHTML(wine, isLive, idx) {
           ${wine.markup_pct != null ? `<div class="meta-cell"><div class="meta-lbl">Markup</div><div class="meta-val ${markupCls}">${wine.markup_pct}%</div></div>` : ""}
           <div class="meta-cell">
             <div class="meta-lbl">Vivino</div>
-            <div class="meta-val">${wine.vivino_rating}${wine.review_count ? `<span class="review-count">(${wine.review_count.toLocaleString()})</span>` : ""}</div>
+            <a href="${buildVivinoUrl(wine)}" target="_blank" rel="noopener noreferrer" class="vivino-link" title="Open on Vivino">
+              <div class="meta-val">${wine.vivino_rating}${wine.review_count ? `<span class="review-count">(${wine.review_count.toLocaleString()})</span>` : ""} <span class="vivino-arrow">↗</span></div>
+            </a>
           </div>
         </div>
         <div class="wine-verdict">${wine.verdict ? `"${escapeHtml(wine.verdict)}"` : ""}</div>
