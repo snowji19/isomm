@@ -568,7 +568,7 @@
     <div class="pre-filter-row">
       <div class="filter-group">
         <div class="filter-label">Max bottle price: <span id="pre-price-val">Any</span></div>
-        <input type="range" id="pre-filter-price" min="0" max="1000" step="25" value="1000" oninput="updatePreFilters()">
+        <input type="range" id="pre-filter-price" min="0" max="2500" step="25" value="2500" oninput="updatePreFilters()">
       </div>
       <div class="filter-group">
         <div class="filter-label">Min Vivino est.: <span id="pre-vivino-val">Any</span></div>
@@ -609,7 +609,7 @@
       <div class="filter-row">
         <div class="filter-group">
           <div class="filter-label">Max bottle price: <span id="price-val">Any</span></div>
-          <input type="range" id="filter-price" min="0" max="1000" step="25" value="1000" oninput="updateFilters()">
+          <input type="range" id="filter-price" min="0" max="2500" step="25" value="2500" oninput="updateFilters()">
         </div>
         <div class="filter-group">
           <div class="filter-label">Min Vivino rating: <span id="vivino-val">Any</span></div>
@@ -946,14 +946,14 @@ let uploadedFile = null;
 let uploadedFileType = null;
 let activeTab = "pdf";
 let apiKey = localStorage.getItem("isomm_key") || "";
-let preMaxPrice  = 1000;
+let preMaxPrice  = 2500;
 let preMinVivino = 0;
 let lastRestaurantName = "Untitled List";
 
 function updatePreFilters() {
   preMaxPrice  = parseInt(document.getElementById("pre-filter-price").value);
   preMinVivino = parseFloat(document.getElementById("pre-filter-vivino").value);
-  document.getElementById("pre-price-val").textContent  = preMaxPrice  >= 1000 ? "Any" : "$" + preMaxPrice;
+  document.getElementById("pre-price-val").textContent  = preMaxPrice  >= 2500 ? "Any" : "$" + preMaxPrice;
   document.getElementById("pre-vivino-val").textContent = preMinVivino <= 0    ? "Any" : preMinVivino.toFixed(1) + "+";
 }
 
@@ -1054,7 +1054,7 @@ function handleFileInput(e) {
 // ═══════════════════════════════════════════════════════════════════════════
 let allWines     = [];
 let activeType   = "All";
-let maxPrice     = 1000;
+let maxPrice     = 2500;
 let minVivino    = 0;
 let sortBy       = "score";
 
@@ -1070,7 +1070,7 @@ function updateFilters() {
   minVivino = parseFloat(document.getElementById("filter-vivino").value);
   sortBy    = document.getElementById("filter-sort").value;
 
-  const priceLabel  = maxPrice >= 1000 ? "Any" : "$" + maxPrice;
+  const priceLabel  = maxPrice >= 2500 ? "Any" : "$" + maxPrice;
   const vivinoLabel = minVivino <= 0   ? "Any" : minVivino.toFixed(1) + "+";
   document.getElementById("price-val").textContent  = priceLabel;
   document.getElementById("vivino-val").textContent = vivinoLabel;
@@ -1080,14 +1080,23 @@ function updateFilters() {
 
 function applyFilters() {
   let filtered = allWines.filter(w => {
+    // Wine type filter
     if (activeType !== "All") {
       const t = (w.type || "").toLowerCase();
       const a = activeType.toLowerCase();
       if (a === "rose" && t !== "rose" && t !== "rosé") return false;
       if (a !== "rose" && t !== a) return false;
     }
-    if (maxPrice < 1000 && w.menu_price != null && w.menu_price > maxPrice) return false;
-    if (minVivino > 0 && (w.vivino_rating || 0) < minVivino) return false;
+    // Price filter — when active, EXCLUDE wines with no price AND wines over the limit
+    if (maxPrice < 2500) {
+      if (w.menu_price == null) return false;
+      if (w.menu_price > maxPrice) return false;
+    }
+    // Vivino filter — wines below threshold (estimated or live) are excluded
+    if (minVivino > 0) {
+      const rating = w.vivino_rating || 0;
+      if (rating < minVivino) return false;
+    }
     return true;
   });
 
@@ -1130,10 +1139,10 @@ function applyFilters() {
 function resetFilters() {
   activeType = "All";
   document.querySelectorAll(".type-pill").forEach(b => b.classList.toggle("active", b.dataset.type === "All"));
-  document.getElementById("filter-price").value  = 1000;
+  document.getElementById("filter-price").value  = 2500;
   document.getElementById("filter-vivino").value = 0;
   document.getElementById("filter-sort").value   = "score";
-  maxPrice = 1000; minVivino = 0; sortBy = "score";
+  maxPrice = 2500; minVivino = 0; sortBy = "score";
   document.getElementById("price-val").textContent  = "Any";
   document.getElementById("vivino-val").textContent = "Any";
   applyFilters();
@@ -1301,7 +1310,7 @@ async function callClaude(messages, system, useSearch) {
 function buildParsePrompt(maxPrice, minVivino) {
   let filterText = "";
   const filters = [];
-  if (maxPrice < 1000)    filters.push(`menu price (bottle price) is $${maxPrice} or LESS`);
+  if (maxPrice < 2500)    filters.push(`menu price (bottle price) is $${maxPrice} or LESS`);
   if (minVivino > 0)      filters.push(`estimated Vivino rating is ${minVivino.toFixed(1)} or HIGHER`);
   if (filters.length) {
     filterText = `\n\nHARD FILTER — ONLY include wines where ALL of these are true:\n- ${filters.join("\n- ")}\n\nExclude every wine that does not meet ALL criteria. Do not include them in the output at all.`;
@@ -1323,10 +1332,33 @@ WHAT TO EXCLUDE — do not include any of these:
 - Food items
 - Section headers, descriptions, or marketing text
 - Wines by the glass that have NO bottle price listed
-- Quartino / half-bottle / pingüino formats — only include FULL BOTTLE entries${filterText}
+
+CRITICAL — BOTTLE SIZE RULE — ONLY 750ml STANDARD BOTTLES:
+You MUST exclude every entry that is not a standard 750ml full bottle. Specifically EXCLUDE:
+- Quartino (250ml) — Italian quarter-bottle format, common in Graziano's-style menus
+- Pingüino (500ml) — half-bottle Argentine format
+- Half-bottle / 375ml / demi
+- Magnum (1.5L), Double Magnum (3L), Jeroboam, large format bottles
+- Carafe, pitcher, decanter formats
+- Any entry that lists multiple prices for different sizes — only extract the 750ml bottle price, NEVER smaller formats
+- If a section header or column header indicates a size other than 750ml (e.g. "QUARTINO 250ML", "PINGÜINO 500ML", "MAGNUMS AND LARGE FORMATS"), exclude EVERY entry in that section
+- If a wine is listed BOTH as a smaller format AND as a full bottle, only include the full bottle entry once
+- When in doubt about the size, exclude the wine
+
+EVERY price you extract must represent a 750ml bottle. If you cannot confirm a price is for 750ml, exclude that wine.${filterText}
 
 WINE EXTRACTION RULES:
-- Include EVERY distinct full-bottle wine entry that meets the criteria above
+- Include EVERY distinct 750ml full-bottle wine entry that meets all criteria above
+- A wine MUST have a clear, numeric bottle price (e.g. "149.00", "$249") to be included
+- If you cannot find an unambiguous price for a wine, EXCLUDE that wine entirely — never output a wine with a missing or null price
+- CRITICAL multi-line entries: many wines span two lines in the source text. The price appears on ONE of those lines (usually the first). The continuation line (region, appellation, vintage detail) is NOT a separate wine — do not create a second entry for it
+  Example of what NOT to do:
+    Source: "155. la Spinetta 449.00\n\"Vursu Vigneto Campe\" Barolo 2017"
+    WRONG: two entries (one "la Spinetta" at $449, one "Vursu Vigneto Campe Barolo 2017" with no price)
+    RIGHT: one entry — name "La Spinetta Vursu Vigneto Campe", vintage "2017", price 449
+  Example with two adjacent prices on consecutive lines (Bordeaux pattern):
+    Source: "464. Chateau Ducru-Beaucaillou \"La Croix de Beaucaillou,\"169.00\nSaint Julien 2016 179.00"
+    These are TWO separate wines: (a) "Chateau Ducru-Beaucaillou La Croix de Beaucaillou" at $169 (b) the wine on line 2 is its OWN distinct entry at $179 — both have explicit prices, both are valid. Use surrounding context (entry number, producer name) to determine which lines belong together
 - If a wine appears with multiple vintages and each has its own price, include each vintage as a separate entry
 - Be completely consistent — the same list with the same filters should always produce the same number of entries
 
@@ -1460,8 +1492,18 @@ function normalizeWines(parsed) {
 // Apply pre-filter to wines (belt-and-suspenders: also filter client-side
 // in case Claude misses any during extraction)
 function applyPreFilter(wines) {
+  // Keywords that indicate non-750ml formats — drop these client-side as a safety net
+  const NON_BOTTLE_KEYWORDS = /\b(quartino|pingüino|pinguino|magnum|jeroboam|half[\s-]?bottle|375\s?ml|250\s?ml|500\s?ml|1\.5\s?l|3\s?l|large\s?format|carafe|pitcher|by\s?the\s?glass|btg)\b/i;
   return wines.filter(w => {
-    if (preMaxPrice < 1000 && w.menu_price != null && w.menu_price > preMaxPrice) return false;
+    // HARD DROP: any wine without a real numeric price is junk extraction
+    if (w.menu_price == null || isNaN(w.menu_price) || w.menu_price <= 0) return false;
+    // Bottle-size client-side filter
+    const nameCheck = w.name || "";
+    if (NON_BOTTLE_KEYWORDS.test(nameCheck)) return false;
+    // Drop entries with empty/garbage names (extraction artifacts)
+    if (nameCheck.trim().length < 3) return false;
+    // Pre-scan price/Vivino filters
+    if (preMaxPrice < 2500 && w.menu_price > preMaxPrice) return false;
     if (preMinVivino > 0 && (w.vivino_rating || 0) < preMinVivino) return false;
     return true;
   });
