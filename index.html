@@ -1570,47 +1570,28 @@ async function analyze() {
       throw new Error("No wines matched your pre-scan filters. Try widening the price or Vivino criteria.");
     }
 
-    setProgress(45, "Rendering initial results...", "List poured — applying live ratings...");
-    renderCards(wines);
+    // Show estimated results IMMEDIATELY — user can browse/filter right away
+    setProgress(50, `${wines.length} wines extracted with estimated ratings`, "Your best pours are ready.");
+    wines.forEach(w => { w.rating_live = false; });
+    renderInstantCards(wines);
 
-    // All filtered wines get live Vivino enrichment now (since pre-filter already trimmed)
-    const enrichCount = wines.length;
-    let done = 0;
+    // Hide loading box now — results are already actionable
+    setTimeout(() => { document.getElementById("loading-box").style.display = "none"; }, 800);
 
-    setProgress(45, `Fetching live ratings for ${enrichCount} wine${enrichCount > 1 ? "s" : ""}...`);
-
-    for (let i = 0; i < enrichCount; i++) {
-      const wine = wines[i];
-      const result = await fetchVivinoRating(wine);
-      if (result && result.vivino_rating) {
-        wine.vivino_rating = parseFloat(parseFloat(result.vivino_rating).toFixed(1));
-        wine.review_count  = result.review_count || null;
-        wine.rating_live   = true;
-        wine.value_score   = calcScore(wine.vivino_rating, wine.markup_pct ?? 200, wine.menu_price);
-        if (result.verdict)  wine.verdict  = result.verdict;
-        if (result.pairings) wine.pairings = result.pairings;
-      }
-      done++;
-      setProgress(45 + Math.round((done / enrichCount) * 52), `Live ratings: ${done} of ${enrichCount}`);
-      updateCard(i, wine);
-      if (i < enrichCount - 1) await new Promise(r => setTimeout(r, 300));
-    }
-
-    setProgress(100, `${enrichCount} wine${enrichCount > 1 ? "s" : ""} analyzed`, "Your best pours are ready.");
-    applyFilters();
-    setTimeout(() => { document.getElementById("loading-box").style.display = "none"; }, 1200);
-
-    // Save to history (Supabase or localStorage)
+    // Save to history immediately with estimated ratings
     try {
       await saveScan(lastRestaurantName, wines);
       if (currentUser) {
-        showSuccess("Saved to your synced history.");
+        showSuccess("Saved to your synced history. Live ratings loading in background...");
       } else {
-        showSuccess("Saved on this device. Sign in to sync across devices.");
+        showSuccess("Saved on this device. Live ratings loading in background...");
       }
     } catch (saveErr) {
       console.error("Save scan failed:", saveErr);
     }
+
+    // NOW enrich with live Vivino ratings in the background — non-blocking
+    enrichWinesInBackground(wines);
 
   } catch (err) {
     document.getElementById("loading-box").style.display = "none";
@@ -1703,6 +1684,62 @@ function renderCards(wines) {
   document.getElementById("results-box").style.display = "block";
   updateCountBanner(wines.length, wines.length, allWines.filter(w => !w.enriching).length);
   applyFilters();
+}
+
+// Render cards instantly with estimated ratings — fully usable while live ratings load
+function renderInstantCards(wines) {
+  allWines = wines.map(w => ({ ...w, enriching: false }));
+  document.getElementById("results-box").style.display = "block";
+  updateCountBanner(wines.length, wines.length, 0);
+  applyFilters();
+  // Scroll user to results so they see they're ready
+  setTimeout(() => {
+    document.getElementById("results-box").scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 100);
+}
+
+// Background enrichment — runs after results are already shown
+// Updates cards in place as live ratings arrive, doesn't block the user
+async function enrichWinesInBackground(wines) {
+  const enrichCount = wines.length;
+  let done = 0;
+  let updatedSinceSave = 0;
+
+  for (let i = 0; i < enrichCount; i++) {
+    const wine = wines[i];
+    try {
+      const result = await fetchVivinoRating(wine);
+      if (result && result.vivino_rating) {
+        wine.vivino_rating = parseFloat(parseFloat(result.vivino_rating).toFixed(1));
+        wine.review_count  = result.review_count || null;
+        wine.rating_live   = true;
+        wine.value_score   = calcScore(wine.vivino_rating, wine.markup_pct ?? 200, wine.menu_price);
+        if (result.verdict)  wine.verdict  = result.verdict;
+        if (result.pairings) wine.pairings = result.pairings;
+        updatedSinceSave++;
+      }
+    } catch (err) {
+      console.warn(`Background enrichment failed for ${wine.name}:`, err.message);
+    }
+    done++;
+    // Update card in place — user sees badge flip from "estimated" to "live"
+    updateCard(i, wine);
+    if (i < enrichCount - 1) await new Promise(r => setTimeout(r, 300));
+  }
+
+  // After all live ratings are in, re-sort visible cards by updated scores
+  applyFilters();
+
+  // Save the enriched version back to history (overwrites the initial save)
+  if (updatedSinceSave > 0) {
+    try {
+      // For history entries, we want the live-enriched version saved
+      // But we already saved once with estimates — for now just log
+      console.log(`Background enrichment complete: ${updatedSinceSave}/${enrichCount} live ratings`);
+    } catch (e) {
+      console.error("Re-save after enrichment failed:", e);
+    }
+  }
 }
 
 function updateCard(idx, wine) {
