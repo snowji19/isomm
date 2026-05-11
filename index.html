@@ -268,12 +268,21 @@
   .wine-vintage { font-family: 'Playfair Display', serif; font-style: italic; font-size: 16px; color: var(--grape); }
 
   .live-badge {
-    font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-    background: var(--good-bg); color: var(--good); border-radius: 50px; padding: 2px 8px;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+    background: var(--good); color: #FAF6F0; border-radius: 50px; padding: 3px 10px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .live-badge::before {
+    content: "●"; font-size: 8px; color: #FAF6F0; line-height: 1;
   }
   .est-badge {
-    font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
-    background: var(--cream); color: var(--stone); border-radius: 50px; padding: 2px 8px;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+    background: transparent; color: var(--stone); border: 1px solid var(--dust);
+    border-radius: 50px; padding: 3px 10px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .est-badge::before {
+    content: "≈"; font-weight: 700; font-size: 11px; line-height: 1;
   }
   .match-badges { display: flex; flex-wrap: wrap; gap: 4px; }
   .match-badge {
@@ -577,7 +586,7 @@
     </div>
   </div>
 
-  <button class="analyze-btn" id="analyze-btn" onclick="analyze()" disabled>Find My Best Bottle</button>
+  <button class="analyze-btn" id="analyze-btn" onclick="startAnalysis()" disabled>Find My Best Bottle</button>
 
   <div class="error" id="error-box"></div>
   <div class="success" id="success-box"></div>
@@ -643,6 +652,8 @@
       <div class="legend-item"><div class="legend-dot" style="background:#7aba9a"></div>Good (80–89)</div>
       <div class="legend-item"><div class="legend-dot" style="background:#C4966A"></div>Fair (70–79)</div>
       <div class="legend-item"><div class="legend-dot" style="background:#C4614A"></div>Poor (&lt;70)</div>
+      <div class="legend-item" style="margin-left:14px;border-left:1px solid var(--dust);padding-left:14px"><span class="live-badge" style="font-size:9px">live</span>confirmed from Vivino</div>
+      <div class="legend-item"><span class="est-badge" style="font-size:9px">est</span>estimated rating</div>
       <div class="legend-match" id="legend-match">
         <span class="match-pill-demo">red</span> matches your preferences
       </div>
@@ -653,6 +664,24 @@
     </div>
   </div>
 
+</div>
+
+<!-- Restaurant Name Prompt Modal -->
+<div class="modal-overlay" id="restaurant-modal" onclick="closeIfOverlay(event, 'restaurant-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Name this wine list</div>
+      <button class="modal-close" onclick="cancelRestaurantPrompt()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="auth-msg">
+        Give this scan a name so you can find it later in your history.
+      </div>
+      <div class="field-label">Restaurant or list name</div>
+      <input type="text" id="restaurant-input" placeholder="e.g. Graziano's" style="width:100%;margin-bottom:16px" />
+      <button class="save-btn" style="width:100%;padding:12px" onclick="confirmRestaurantPrompt()">Start Analysis</button>
+    </div>
+  </div>
 </div>
 
 <!-- History Modal -->
@@ -866,6 +895,7 @@ async function openHistory() {
         </div>
         <div class="history-item-meta">
           <span><strong>${s.wine_count}</strong> wines</span>
+          <button class="history-delete" style="color:var(--stone)" onclick="event.stopPropagation();renameHistoryItem('${s.id}')">Rename</button>
           <button class="history-delete" onclick="event.stopPropagation();deleteHistoryItem('${s.id}')">Delete</button>
         </div>
       </div>
@@ -878,6 +908,26 @@ function closeHistory() { document.getElementById("history-modal").classList.rem
 async function deleteHistoryItem(id) {
   if (!confirm("Delete this scan?")) return;
   await deleteScan(id);
+  openHistory();
+}
+
+async function renameHistoryItem(id) {
+  const scans = await loadHistory();
+  const scan = scans.find(s => String(s.id) === String(id));
+  if (!scan) return;
+  const newName = prompt("Rename this scan:", scan.restaurant_name || "");
+  if (!newName || newName === scan.restaurant_name) return;
+  // Update in storage
+  if (typeof id === "string" && id.startsWith("local-")) {
+    const local = JSON.parse(localStorage.getItem("isomm_history") || "[]");
+    const idx = local.findIndex(s => s.id === id);
+    if (idx >= 0) {
+      local[idx].restaurant_name = newName.trim();
+      localStorage.setItem("isomm_history", JSON.stringify(local));
+    }
+  } else if (currentUser) {
+    await sb.from("scans").update({ restaurant_name: newName.trim() }).eq("id", id);
+  }
   openHistory();
 }
 
@@ -1523,6 +1573,58 @@ function dedupeWines(wines) {
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN ANALYZE FLOW
 // ═══════════════════════════════════════════════════════════════════════════
+
+// Auto-suggest a restaurant name from the filename (PDF) or default
+function suggestRestaurantName() {
+  if (activeTab === "text") return "Pasted List";
+  if (!uploadedFile) return "";
+  // Strip extension, replace dashes/underscores, title-case
+  let name = uploadedFile.name.replace(/\.[^.]+$/, "");
+  name = name.replace(/[-_]+/g, " ");
+  // Remove common noise patterns
+  name = name.replace(/\b(wine\s*list|menu|list|from\s*client|\d{4}|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b/gi, "");
+  name = name.replace(/\s+/g, " ").trim();
+  return name || "Wine List";
+}
+
+// Step 1: Prompt for restaurant name before doing anything
+function startAnalysis() {
+  // Re-check API key
+  if (!apiKey) apiKey = localStorage.getItem("isomm_key") || "";
+  if (!apiKey) {
+    showError("No API key set — enter your Anthropic API key above and tap Save.");
+    return;
+  }
+  document.getElementById("restaurant-input").value = suggestRestaurantName();
+  document.getElementById("restaurant-modal").classList.add("visible");
+  // Focus the input
+  setTimeout(() => document.getElementById("restaurant-input").focus(), 100);
+}
+
+function cancelRestaurantPrompt() {
+  document.getElementById("restaurant-modal").classList.remove("visible");
+}
+
+function confirmRestaurantPrompt() {
+  const name = document.getElementById("restaurant-input").value.trim();
+  if (!name) {
+    document.getElementById("restaurant-input").focus();
+    return;
+  }
+  lastRestaurantName = name;
+  document.getElementById("restaurant-modal").classList.remove("visible");
+  // Now actually run the analysis
+  analyze();
+}
+
+// Allow Enter key to submit the modal
+document.getElementById("restaurant-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    confirmRestaurantPrompt();
+  }
+});
+
 async function analyze() {
   document.getElementById("error-box").style.display   = "none";
   document.getElementById("success-box").style.display = "none";
@@ -1541,7 +1643,7 @@ async function analyze() {
   const prefStr = selectedPrefs.length ? `User preferences: ${selectedPrefs.join(", ")}.` : "";
   const PARSE_PROMPT = buildParsePrompt(preMaxPrice, preMinVivino);
   let wines = [];
-  lastRestaurantName = "Untitled List";
+  // lastRestaurantName is already set by the startAnalysis modal — don't override
 
   try {
     setProgress(5, "", "Tasting the list...");
@@ -1563,13 +1665,10 @@ async function analyze() {
         const parsed = safeParseWines(raw);
         if (!parsed) throw new Error("Couldn't parse the wine list. The image may be unclear — try a sharper photo or a PDF.");
         wines = normalizeWines(parsed);
-        lastRestaurantName = uploadedFile.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
       } else {
         // PDF path: extract text and chunk it
         setProgress(10, "", "Reading the PDF...");
-        const { text: pdfText, restaurantName } = await extractPdfText(uploadedFile);
-        if (restaurantName) lastRestaurantName = restaurantName;
-        else lastRestaurantName = uploadedFile.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+        const { text: pdfText } = await extractPdfText(uploadedFile);
 
         const chunks = chunkPdfText(pdfText, 12000);
         setProgress(15, `Wine list split into ${chunks.length} section${chunks.length > 1 ? "s" : ""}`, "Tasting the list...");
@@ -1596,7 +1695,6 @@ async function analyze() {
     } else {
       // Text paste path
       const txt = document.getElementById("wine-text").value.trim();
-      lastRestaurantName = "Pasted List";
       const messages = [{ role: "user", content: `Analyze this restaurant wine list and return the JSON array. ${prefStr}\n\n${txt}` }];
       const { text: raw, truncated } = await callClaude(messages, PARSE_PROMPT, false);
       if (truncated) console.warn("Text parse hit max_tokens");
