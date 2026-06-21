@@ -1448,6 +1448,8 @@ WINE EXTRACTION RULES:
     Source: "464. Chateau Ducru-Beaucaillou \"La Croix de Beaucaillou,\"169.00\nSaint Julien 2016 179.00"
     These are TWO separate wines: (a) "Chateau Ducru-Beaucaillou La Croix de Beaucaillou" at $169 (b) the wine on line 2 is its OWN distinct entry at $179 — both have explicit prices, both are valid. Use surrounding context (entry number, producer name) to determine which lines belong together
 - If a wine appears with multiple vintages and each has its own price, include each vintage as a separate entry
+- GLASS + BOTTLE on the same line: some entries (often dessert wines) list TWO prices — a by-the-glass price (smaller, often under a "GLASS" column) and a bottle/half-bottle price (larger, under a "BOTTLE" or "1/2 BOTTLE" column). Extract ONLY the bottle price, never the glass price. Example: "DOLCE, FAR NIENTE, Napa Valley, '17 ... 32 ... 130" → the 32 is a glass pour, 130 is the bottle — use 130, never 32. Never create two entries from one such line.
+- DESSERT / HALF-BOTTLE sections: if a section header indicates 375ml or half-bottles (e.g. "375 ML — (HALF-BOTTLES)"), treat per the 750ml bottle-size rule above — but if a dessert wine is the standard offered format for that list, still capture its full bottle price (not the glass price). When the only listed price is explicitly a half-bottle or glass, exclude the entry.
 - Be completely consistent — the same list with the same filters should always produce the same number of entries
 
 SCORING FORMULA — apply exactly:
@@ -1703,6 +1705,8 @@ async function analyze() {
   const prefStr = selectedPrefs.length ? `User preferences: ${selectedPrefs.join(", ")}.` : "";
   const PARSE_PROMPT = buildParsePrompt(preMaxPrice, preMinVivino);
   let wines = [];
+  let chunkFailures = 0;  // how many PDF chunks threw / parsed to nothing
+  let chunkTotal = 0;     // total chunks attempted
   // lastRestaurantName is already set by the startAnalysis modal — don't override
 
   try {
@@ -1731,6 +1735,7 @@ async function analyze() {
         const { text: pdfText } = await extractPdfText(uploadedFile);
 
         const chunks = chunkPdfText(pdfText, 12000);
+        chunkTotal = chunks.length;
         setProgress(15, `Wine list split into ${chunks.length} section${chunks.length > 1 ? "s" : ""}`, "Tasting the list...");
 
         for (let i = 0; i < chunks.length; i++) {
@@ -1741,10 +1746,14 @@ async function analyze() {
             const { text: raw, truncated } = await callClaude(messages, PARSE_PROMPT, false);
             if (truncated) console.warn(`Chunk ${i+1} hit max_tokens — partial salvage`);
             const parsed = safeParseWines(raw);
-            if (parsed && Array.isArray(parsed)) {
+            if (parsed && Array.isArray(parsed) && parsed.length > 0) {
               wines = wines.concat(normalizeWines(parsed));
+            } else {
+              chunkFailures++;
+              console.warn(`Chunk ${i+1} parsed to nothing (raw length ${raw ? raw.length : 0})`);
             }
           } catch (chunkErr) {
+            chunkFailures++;
             console.warn(`Chunk ${i+1} failed:`, chunkErr.message);
             // Continue to next chunk rather than failing the whole scan
           }
@@ -1763,11 +1772,35 @@ async function analyze() {
       wines = normalizeWines(parsed);
     }
 
+    // Capture how many wines we extracted BEFORE the pre-filter runs,
+    // so we can tell "extraction failed" apart from "filters excluded everything".
+    const extractedCount = wines.length;
+
     // Belt-and-suspenders: filter client-side in case Claude included anything outside criteria
     wines = applyPreFilter(wines);
 
     if (wines.length === 0) {
-      throw new Error("No wines matched your pre-scan filters. Try widening the price or Vivino criteria.");
+      const hasActiveFilters = preMaxPrice < 2500 || preMinVivino > 0;
+
+      if (extractedCount === 0) {
+        // Nothing was extracted at all — this is a parse/extraction failure, NOT a filter miss
+        if (chunkFailures > 0 && chunkFailures === chunkTotal) {
+          throw new Error("Couldn't read any wines from this PDF — every section failed to parse. The list may have unusual formatting or characters. Try the Paste List tab, or a clearer PDF.");
+        }
+        throw new Error("Couldn't find any wines in this file. If it's a scanned/image PDF, try uploading it as a photo instead, or use the Paste List tab.");
+      }
+
+      if (hasActiveFilters) {
+        // Wines WERE extracted, but the filters removed all of them — this message is now accurate
+        throw new Error(`Found ${extractedCount} wine${extractedCount > 1 ? "s" : ""}, but none matched your pre-scan filters (max $${preMaxPrice >= 2500 ? "Any" : preMaxPrice}, min Vivino ${preMinVivino > 0 ? preMinVivino.toFixed(1) : "Any"}). Try widening the price or Vivino criteria.`);
+      }
+
+      // Extracted wines, no filters set, yet zero survived → they were dropped for bad prices/names
+      throw new Error(`Extracted ${extractedCount} wine${extractedCount > 1 ? "s" : ""}, but all were dropped as incomplete (missing or unreadable prices). This usually means a formatting quirk in the list — try the Paste List tab for this one.`);
+    }
+
+    if (chunkFailures > 0) {
+      console.warn(`Heads up: ${chunkFailures} of ${chunkTotal} sections failed to parse — some wines may be missing.`);
     }
 
     // Show estimated results IMMEDIATELY — user can browse/filter right away
