@@ -1346,7 +1346,7 @@ function chunkPdfText(text, targetCharsPerChunk = 12000) {
 async function callClaude(messages, system, useSearch) {
   const maxTok = useSearch ? 1000 : 16000;
   const body = {
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: maxTok,
     temperature: useSearch ? 1 : 0,
     messages
